@@ -1,0 +1,56 @@
+declare upper;
+
+
+### SCRIPTS ###
+    script DailyAverage {
+        input Period      = 200;
+        input Calculation = AverageType.SIMPLE;
+        input Aggregation = AggregationPeriod.DAY;
+        input Quote       = FundamentalType.CLOSE;
+
+        def aggr   = Max(GetAggregationPeriod(), Aggregation);
+        def length = Round(Period / (aggr / Aggregation), 0);
+        def price  = Fundamental(Quote, period = aggr);
+
+        plot Avg;
+        if length > 1 {
+            Avg = MovingAverage(Calculation, price, length);
+        }
+        else {
+            Avg = Double.NaN;
+        }
+
+        Avg.hide();
+    }
+###
+
+
+### INOPUTS ###
+    input Show12  = yes;
+    input Show21  = yes;
+    input Show50  = yes;
+    input Show200 = yes;
+###
+
+
+### PLOTS ###
+    plot EMA12 = DailyAverage(12, AverageType.EXPONENTIAL);
+    EMA12.SetHiding(!Show12);
+    EMA12.DefineColor("Average", CreateColor(126, 94, 44));
+    EMA12.SetDefaultColor(EMA12.Color("Average"));
+
+    plot EMA21 = DailyAverage(21, AverageType.EXPONENTIAL);
+    EMA21.SetHiding(!Show21);
+    EMA21.DefineColor("Average", CreateColor(130, 55, 55));
+    EMA21.SetDefaultColor(EMA21.Color("Average"));
+
+    plot SMA50 = DailyAverage(50,  AverageType.SIMPLE);
+    SMA50.SetHiding(!Show50);
+    SMA50.DefineColor("Average", CreateColor(46, 115, 115));
+    SMA50.SetDefaultColor(SMA50.Color("Average"));
+
+    plot SMA200 = DailyAverage(200, AverageType.SIMPLE);
+    SMA200.SetHiding(!Show200);
+    SMA200.DefineColor("Average", CreateColor(77, 99, 55));
+    SMA200.SetDefaultColor(SMA200.Color("Average"));
+###
