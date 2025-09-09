@@ -1,0 +1,500 @@
+declare lower;
+
+
+### SCRIPTS ###
+    script Date {
+        def yyyymmdd = GetYYYYMMDD();
+        def yyyy     = GetYear();
+        def mm       = GetMonth();
+        def doy      = GetDay();
+        def dom      = GetDayOfMonth(yyyymmdd);
+        def dow      = GetDayOfWeek(yyyymmdd);
+        def dowj1    = GetDayOfWeek(yyyy * 10000 + 0101);
+        def ww       = Ceil((doy + 1 + if dowj1 >= 5 then dowj1 - 7 else dowj1) / 7);
+        def q        = Ceil(mm / 3);
+        def yyyyq    = yyyy * 10 + q;
+        def yyyymm   = yyyy * 100 + mm;
+        def yyyyww   = yyyy * 100 + ww;
+
+        def isAfterOpex    = (dom - 14 - if dow > 5 then dow - 5 else dow + 2) > 0;
+        def isEndOfQuarter = mm % 3 == 0;
+
+        def qOpex = if q + isAfterOpex * isEndOfQuarter <= 4
+            then q + isAfterOpex * isEndOfQuarter
+            else 1;
+
+        def mmOpex = if mm + isAfterOpex <= 12
+            then mm + isAfterOpex
+            else 1;
+
+        def yyyyOpex = if mm + isAfterOpex <= 12
+            then yyyy
+            else yyyy + 1;
+
+        def yyyyqOpex  = yyyyOpex * 10  + qOpex;
+        def yyyymmOpex = yyyyOpex * 100 + mmOpex;
+
+        plot P = yyyymmdd;
+        P.hide();
+    }
+
+    script Chart {
+        def aggregation   = GetAggregationPeriod();
+        def isIntraday    = aggregation <  AggregationPeriod.DAY;
+        def isDaily       = aggregation == AggregationPeriod.DAY;
+        def isMultiDay    = aggregation >  AggregationPeriod.DAY;
+        def isIntradayBar = isIntraday and Date() == Date()[1];
+        def number        = BarNumber();
+        def startBar      = First(number);
+        def endBar        = HighestAll(number * !IsNaN(close));
+        def isValidBar    = number between startBar and endBar;
+        def startOffset   = number - startBar;
+        def endOffset     = number - endBar;
+        def isStart       = number == startBar;
+        def isEnd         = number == endBar;
+
+        plot P = Double.NaN;
+        P.hide();
+    }
+
+    script Value {
+        input raw    = 0;
+        input minRaw = 0;
+        input maxRaw = 0;
+
+        def minValue = if minRaw < 0 then minRaw else -999999999999999;
+        def maxValue = if maxRaw > 0 then maxRaw else  999999999999999;
+
+        def isValid;
+        if IsNaN(raw) or IsInfinite(raw) {
+            isValid = no;
+        }
+        else {
+            isValid = raw between minValue and maxValue;
+        }
+
+        def value = if isValid or !Chart().isValidBar
+            then raw
+            else value[1];
+
+        plot P = Double.NaN;
+        P.hide();
+    }
+
+    script Periods {
+        input period  = "Chart";
+        input since   = 20250407;
+        input candles = 100;
+
+        def isStart     = Chart().isStart;
+        def endBar      = Chart().endBar;
+        def aggregation = GetAggregationPeriod();
+
+        def isNew;
+        if period == "Daily" and aggregation <= AggregationPeriod.FOUR_HOURS {
+            isNew = isStart or Date() != Date()[1];
+        }
+        else if period == "Weekly" and aggregation <= AggregationPeriod.TWO_DAYS {
+            isNew = isStart or Date().yyyyww != Date().yyyyww[1];
+        }
+        else if period == "Monthly" and aggregation <= AggregationPeriod.WEEK {
+            isNew = isStart or Date().yyyymm != Date().yyyymm[1];
+        }
+        else if period == "MonthlyOPEX" and aggregation <= AggregationPeriod.WEEK {
+            isNew = isStart or Date().yyyymmOpex != Date().yyyymmOpex[1];
+        }
+        else if period == "Quarterly" and aggregation <= AggregationPeriod.MONTH {
+            isNew = isStart or Date().yyyyq != Date().yyyyq[1];
+        }
+        else if period == "QuarterlyOPEX" and aggregation <= AggregationPeriod.MONTH{
+            isNew = isStart or Date().yyyyqOpex != Date().yyyyqOpex[1];
+        }
+        else if period == "Yearly" and aggregation <= AggregationPeriod.QUARTER {
+            isNew = isStart or Date().yyyy != Date().yyyy[1];
+        }
+        else if period == "SinceDate" {
+            isNew = Date() >= since and (Date()[1] < since or isStart);
+        }
+        else if period == "CandlesAgo" {
+            isNew = isStart and candles > endBar or BarNumber() + candles == endBar;
+        }
+        else {
+            isNew = isStart;
+        }
+
+        def isActive = isNew or isActive[1];
+
+        plot P = isNew;
+        P.hide();
+    }
+
+    script LatestPeriod {
+        input Period  = "Chart";
+        input Since   = 20250407;
+        input Candles = 100;
+
+        def endBar    = Chart().endBar;
+        def endOffset = Chart().endOffset;
+        def date      = GetYYYYMMDD();
+
+        def isLatest;
+        if Period == "Daily" {
+            isLatest = date == GetValue(date, endOffset);
+        }
+        else if Period == "Weekly" {
+            isLatest = Date().yyyyww == GetValue(Date().yyyyww, endOffset);
+        }
+        else if Period == "Monthly" {
+            isLatest = Date().yyyymm == GetValue(Date().yyyymm, endOffset);
+        }
+        else if Period == "MonthlyOPEX" {
+            isLatest = Date().yyyymm == GetValue(Date().yyyymm, endOffset);
+        }
+        else if Period == "Quarterly" {
+            isLatest = Date().yyyyq == GetValue(Date().yyyyq, endOffset);
+        }
+        else if Period == "QuarterlyOPEX" {
+            isLatest = Date().yyyyqOpex == GetValue(Date().yyyyqOpex, endOffset);
+        }
+        else if Period == "Yearly" {
+            isLatest = Date().yyyy == GetValue(Date().yyyy, endOffset);
+        }
+        else if Period == "SinceDate" {
+            isLatest = date >= Since;
+        }
+        else if Period == "CandlesAgo" {
+            isLatest = BarNumber() >= endBar - Candles;
+        }
+        else {
+            isLatest = yes;
+        }
+
+        plot P = isLatest;
+        P.hide();
+    }
+
+    script GetData {
+        input Ticker = "";
+        input Quote  = "Close";
+        input Scale  = "Logarithmic";
+
+        def type;
+        if Quote == "Open" {
+            type = FundamentalType.OPEN;
+        }
+        else if Quote == "High" {
+            type = FundamentalType.HIGH;
+        }
+        else if Quote == "Low" {
+            type = FundamentalType.LOW;
+        }
+        else if Quote == "HL2" {
+            type = FundamentalType.HL2;
+        }
+        else if Quote == "HLC3" {
+            type = FundamentalType.HLC3;
+        }
+        else if Quote == "OHLC4" {
+            type = FundamentalType.OHLC4;
+        }
+        else {
+            type = FundamentalType.CLOSE;
+        }
+
+        def raw = Fundamental(type, Ticker);
+
+        def value;
+        if Scale == "Logarithmic" {
+            value = Log(raw);
+        }
+        else {
+            value = raw;
+        }
+
+        plot P = value;
+        P.hide();
+    }
+
+    script GetChange {
+        input Value       = Double.NaN;
+        input Offset      = Double.NaN;
+        input Scale       = "Logarithmic";
+        input IsNewPeriod = no;
+        input IsActive    = no;
+        input IsLatest    = no;
+        input EndOnly     = no;
+
+        def val = Value;
+        def off = Offset;
+
+        def change;
+        if !Chart().isValidBar or !IsActive or !IsLatest and EndOnly {
+            change = Double.NaN;
+        }
+        else if isNewPeriod and Scale == "Relative" {
+            change = val / val[1] - off - 1;
+        }
+        else if isNewPeriod {
+            change = val - val[1] - off;
+        }
+        else if Scale == "Relative" {
+            change = (change[1] + 1) * (val / val[1] - off) - 1;
+        }
+        else {
+            change = change[1] + val - val[1] - off;
+        }
+
+        plot P = change;
+        P.hide();
+    }
+
+    script GetHide {
+        input Change  = Double.NaN;
+        input COffset = Double.NaN;
+        input Perf    = "";
+
+        def chg = Change;
+        def off = COffset;
+
+        def value;
+        if Chart().isStart and Perf == "Leading" {
+            value = GetValue(chg < off, Chart().endOffset);
+        }
+        else if Chart().isStart and Perf == "Lagging" {
+            value = GetValue(chg > off, Chart().endOffset);
+        }
+        else {
+            value = value[1];
+        }
+
+        plot P = value;
+        P.hide();
+    }
+###
+
+
+### INPUTS ###
+    input Display = {
+        default "Ratio",
+        "Overlay"
+    };
+
+    input Scale = {
+        default "Logarithmic",
+        "Relative"
+    };
+
+    input Cap = {
+        default "1500",
+        "500EW",
+        "500",
+        "400",
+        "600"
+    };
+
+    input Performance = {
+        default "All",
+        "Leading",
+        "Lagging"
+    };
+
+    input Quote = {
+        default "Close",
+        "Open",
+        "High",
+        "Low",
+        "HL2",
+        "HLC3",
+        "OHLC4"
+    };
+
+    input Period = {
+        default "Chart",
+        "Daily",
+        "Weekly",
+        "Monthly",
+        "MonthlyOPEX",
+        "Quarterly",
+        "QuarterlyOPEX",
+        "Yearly",
+        "CandlesAgo",
+        "SinceDate"
+    };
+
+    @Date input SinceDate = 20250407;
+    input CandlesAgo      = 100;
+    input Separators      = yes;
+    input EndPeriodOnly   = yes;
+###
+
+
+### LOOKUPS ###
+    def value00 = GetData("$SP" + Cap, Quote, Scale);
+    def value10 = GetData("$SP" + Cap + "#10", Quote, Scale);
+    def value15 = GetData("$SP" + Cap + "#15", Quote, Scale);
+    def value20 = GetData("$SP" + Cap + "#20", Quote, Scale);
+    def value25 = GetData("$SP" + Cap + "#25", Quote, Scale);
+    def value30 = GetData("$SP" + Cap + "#30", Quote, Scale);
+    def value35 = GetData("$SP" + Cap + "#35", Quote, Scale);
+    def value40 = GetData("$SP" + Cap + "#40", Quote, Scale);
+    def value45 = GetData("$SP" + Cap + "#45", Quote, Scale);
+    def value50 = GetData("$SP" + Cap + "#50", Quote, Scale);
+    def value55 = GetData("$SP" + Cap + "#55", Quote, Scale);
+    def value60 = GetData("$SP" + Cap + "#60", Quote, Scale);
+###
+
+
+### CALCULATIONS ###
+    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
+    def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
+    def isLatestPeriod = LatestPeriod(Period, SinceDate, CandlesAgo);
+    def showBubbles    = isActivePeriod and isNewPeriod[-1] or Chart().isEnd;
+
+    # S&P
+    def offset;
+    if !Chart().isValidBar or !isActivePeriod or EndPeriodOnly and !isLatestPeriod {
+        offset = Double.NaN;
+    }
+    else if Display == Display.Ratio and Scale == Scale.Relative {
+        offset = value00 / value00[1] - 1;
+    }
+    else if Display == Display.Ratio {
+        offset = value00 - value00[1];
+    }
+    else {
+        offset = 0;
+    }
+
+    # Change
+    def change00 = GetChange(value00, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
+    def change10 = GetChange(value10, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
+    def change15 = GetChange(value15, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
+    def change20 = GetChange(value20, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
+    def change25 = GetChange(value25, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
+    def change30 = GetChange(value30, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
+    def change35 = GetChange(value35, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
+    def change40 = GetChange(value40, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
+    def change45 = GetChange(value45, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
+    def change50 = GetChange(value50, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
+    def change55 = GetChange(value55, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
+    def change60 = GetChange(value60, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
+
+    # Hide
+    def hide10 = GetHide(change10, change00, Performance);
+    def hide15 = GetHide(change15, change00, Performance);
+    def hide20 = GetHide(change20, change00, Performance);
+    def hide25 = GetHide(change25, change00, Performance);
+    def hide30 = GetHide(change30, change00, Performance);
+    def hide35 = GetHide(change35, change00, Performance);
+    def hide40 = GetHide(change40, change00, Performance);
+    def hide45 = GetHide(change45, change00, Performance);
+    def hide50 = GetHide(change50, change00, Performance);
+    def hide55 = GetHide(change55, change00, Performance);
+    def hide60 = GetHide(change60, change00, Performance);
+###
+
+
+### PLOTS ###
+    DefineGlobalColor("Line",       CreateColor(48, 48, 48));
+    DefineGlobalColor("Separator",  CreateColor(32, 32, 32));
+    DefineGlobalColor("Background", CreateColor(12, 12, 12));
+    DefineGlobalColor("C10",        CreateColor(102, 255, 137));
+    DefineGlobalColor("C15",        CreateColor(179, 179, 179));
+    DefineGlobalColor("C20",        CreateColor(255, 183, 128));
+    DefineGlobalColor("C25",        CreateColor(255, 102, 219));
+    DefineGlobalColor("C30",        CreateColor(107, 102, 255));
+    DefineGlobalColor("C35",        CreateColor(255, 128, 149));
+    DefineGlobalColor("C40",        CreateColor(175, 255, 128));
+    DefineGlobalColor("C45",        CreateColor(102, 189, 255));
+    DefineGlobalColor("C50",        CreateColor(199, 102, 255));
+    DefineGlobalColor("C55",        CreateColor(251, 255, 128));
+    DefineGlobalColor("C60",        CreateColor(102, 255, 229));
+
+    # S&P
+    plot I = change00;
+    I.SetHiding(Display != Display.Overlay);
+    I.SetDefaultColor(Color.WHITE);
+    I.SetLineWeight(3);
+    I.HideBubble();
+    I.HideTitle();
+    AddChartBubble(showBubbles and Display == Display.Overlay, I, "$SP" + Cap, Color.WHITE);
+
+    # S&P outline
+    plot O = change00;
+    O.SetHiding(Display != Display.Overlay);
+    O.SetDefaultColor(GlobalColor("Background"));
+    O.SetLineWeight(5);
+    O.HideBubble();
+    O.HideTitle();
+
+    # Sectors
+    plot SP10 = if hide10 then Double.NaN else change10;
+    SP10.SetHiding(hide10);
+    SP10.AssignValueColor(if isNewPeriod then GlobalColor("Background") else GlobalColor("C10"));
+    AddChartBubble(showBubbles and !hide10, SP10, "Energy", GlobalColor("C10"));
+
+    plot SP15 = if hide15 then Double.NaN else change15;
+    SP15.SetHiding(hide15);
+    SP15.AssignValueColor(if isNewPeriod then GlobalColor("Background") else GlobalColor("C15"));
+    AddChartBubble(showBubbles and !hide15, SP15, "Materials", GlobalColor("C15"));
+
+    plot SP20 = if hide20 then Double.NaN else change20;
+    SP20.SetHiding(hide20);
+    SP20.AssignValueColor(if isNewPeriod then GlobalColor("Background") else GlobalColor("C20"));
+    AddChartBubble(showBubbles and !hide20, SP20, "Industrials", GlobalColor("C20"));
+
+    plot SP25 = if hide25 then Double.NaN else change25;
+    SP25.SetHiding(hide25);
+    SP25.AssignValueColor(if isNewPeriod then GlobalColor("Background") else GlobalColor("C25"));
+    AddChartBubble(showBubbles and !hide25, SP25, "Discretionary", GlobalColor("C25"));
+
+    plot SP30 = if hide30 then Double.NaN else change30;
+    SP30.SetHiding(hide30);
+    SP30.AssignValueColor(if isNewPeriod then GlobalColor("Background") else GlobalColor("C30"));
+    AddChartBubble(showBubbles and !hide30, SP30, "Staples", GlobalColor("C30"));
+
+    plot SP35 = if hide35 then Double.NaN else change35;
+    SP35.SetHiding(hide35);
+    SP35.AssignValueColor(if isNewPeriod then GlobalColor("Background") else GlobalColor("C35"));
+    AddChartBubble(showBubbles and !hide35, SP35, "Healthcare", GlobalColor("C35"));
+
+    plot SP40 = if hide40 then Double.NaN else change40;
+    SP40.SetHiding(hide40);
+    SP40.AssignValueColor(if isNewPeriod then GlobalColor("Background") else GlobalColor("C40"));
+    AddChartBubble(showBubbles and !hide40, SP40, "Financials", GlobalColor("C40"));
+
+    plot SP45 = if hide45 then Double.NaN else change45;
+    SP45.SetHiding(hide45);
+    SP45.AssignValueColor(if isNewPeriod then GlobalColor("Background") else GlobalColor("C45"));
+    AddChartBubble(showBubbles and !hide45, SP45, "Technology", GlobalColor("C45"));
+
+    plot SP50 = if hide50 then Double.NaN else change50;
+    SP50.SetHiding(hide50);
+    SP50.AssignValueColor(if isNewPeriod then GlobalColor("Background") else GlobalColor("C50"));
+    AddChartBubble(showBubbles and !hide50, SP50, "Communications", GlobalColor("C50"));
+
+    plot SP55 = if hide55 then Double.NaN else change55;
+    SP55.SetHiding(hide55);
+    SP55.AssignValueColor(if isNewPeriod then GlobalColor("Background") else GlobalColor("C55"));
+    AddChartBubble(showBubbles and !hide55, SP55, "Utilities", GlobalColor("C55"));
+
+    plot SP60 = if hide60 then Double.NaN else change60;
+    SP60.SetHiding(hide60);
+    SP60.AssignValueColor(if isNewPeriod then GlobalColor("Background") else GlobalColor("C60"));
+    AddChartBubble(showBubbles and !hide60, SP60, "Real Estate", GlobalColor("C60"));
+
+    # Mid
+    plot Mid = change00;
+    Mid.SetHiding(Display != Display.Ratio);
+    Mid.SetDefaultColor(GlobalColor("Line"));
+    Mid.HideBubble();
+    Mid.HideTitle();
+
+    # Dividers
+    AddVerticalLine(
+        visible = Separators and isNewPeriod and isActivePeriod[1],
+        color   = GlobalColor("Separator"),
+        stroke  = Curve.SHORT_DASH,
+        text    = ""
+    );
+###
