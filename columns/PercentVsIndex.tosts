@@ -1,0 +1,39 @@
+### INPUTS ###
+# input Ticker = "$SP1500";
+# input Ticker = "$SP500";
+# input Ticker = "$SP50EW";
+# input Ticker = "$SP400";
+# input Ticker = "$SP600";
+
+# input Period = AggregationPeriod.DAY;
+# input Period = AggregationPeriod.WEEK;
+# input Period = AggregationPeriod.MONTH;
+
+
+### LOOKUPS ###
+def rawValue = close(GetSymbol(), Period);
+def rawIndex = close(Ticker, Period);
+
+
+### CALCULATIONS ###
+def value = if !IsNaN(rawValue) then rawValue else 0;
+def index = if !IsNaN(rawIndex) then rawIndex else 0;
+
+def valueChange = 100 * (value / value[1] - 1);
+def indexChange = 100 * (index / index[1] - 1);
+
+
+### PLOTS ###
+plot P = if !IsNaN(valueChange) and !IsNaN(valueChange)
+    then Round(valueChange - indexChange, 2)
+    else 0;
+
+P.DefineColor("Up",      CreateColor(0, 197, 49));
+P.DefineColor("Down",    CreateColor(255, 95, 95));
+P.DefineColor("Neutral", GetColor(7));
+
+P.AssignValueColor(
+    if P > 0 then P.Color("Up")
+    else if P < 0 then P.Color("Down")
+    else P.Color("Neutral")
+);

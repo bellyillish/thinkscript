@@ -1,0 +1,346 @@
+declare lower;
+
+
+### SCRIPTS ###
+    script Date {
+        def yyyymmdd = GetYYYYMMDD();
+        def yyyy     = GetYear();
+        def mm       = GetMonth();
+        def doy      = GetDay();
+        def dom      = GetDayOfMonth(yyyymmdd);
+        def dow      = GetDayOfWeek(yyyymmdd);
+        def dowj1    = GetDayOfWeek(yyyy * 10000 + 0101);
+        def ww       = Ceil((doy + 1 + if dowj1 >= 5 then dowj1 - 7 else dowj1) / 7);
+        def q        = Ceil(mm / 3);
+        def yyyyq    = yyyy * 10 + q;
+        def yyyymm   = yyyy * 100 + mm;
+        def yyyyww   = yyyy * 100 + ww;
+
+        def isAfterOpex    = (dom - 14 - if dow > 5 then dow - 5 else dow + 2) > 0;
+        def isEndOfQuarter = mm % 3 == 0;
+
+        def qOpex = if q + isAfterOpex * isEndOfQuarter <= 4
+            then q + isAfterOpex * isEndOfQuarter
+            else 1;
+
+        def mmOpex = if mm + isAfterOpex <= 12
+            then mm + isAfterOpex
+            else 1;
+
+        def yyyyOpex = if mm + isAfterOpex <= 12
+            then yyyy
+            else yyyy + 1;
+
+        def yyyyqOpex  = yyyyOpex * 10  + qOpex;
+        def yyyymmOpex = yyyyOpex * 100 + mmOpex;
+
+        plot P = yyyymmdd;
+        P.hide();
+    }
+
+    script Chart {
+        def number        = BarNumber();
+        def aggregation   = GetAggregationPeriod();
+        def startBar      = First(number);
+        def startOffset   = number - startBar;
+        def isStart       = number == startBar;
+        def endBar        = HighestAll(number * !IsNaN(close));
+        def endOffset     = number - endBar;
+        def isEnd         = number == endBar;
+        def isValidBar    = number between startBar and endBar;
+        def isIntradayBar = Date() == Date()[1];
+        def isIntraday    = aggregation <  AggregationPeriod.DAY;
+        def isDaily       = aggregation == AggregationPeriod.DAY;
+        def isMultiDay    = aggregation >  AggregationPeriod.DAY;
+
+        plot P = Double.NaN;
+        P.hide();
+    }
+
+    script Value {
+        input raw    = 0;
+        input minRaw = 0;
+        input maxRaw = 0;
+
+        def minValue = if minRaw < 0 then minRaw else -999999999999999;
+        def maxValue = if maxRaw > 0 then maxRaw else  999999999999999;
+
+        def isValid;
+        if IsNaN(raw) or IsInfinite(raw) {
+            isValid = no;
+        }
+        else {
+            isValid = raw between minValue and maxValue;
+        }
+
+        def value = if isValid or !Chart().isValidBar
+            then raw
+            else value[1];
+
+        plot P = Double.NaN;
+        P.hide();
+    }
+
+    script Periods {
+        input period  = "Chart";
+        input since   = 20221010;
+        input candles = 100;
+
+        def isStart     = Chart().isStart;
+        def endBar      = Chart().endBar;
+        def aggregation = GetAggregationPeriod();
+
+        def isNew;
+        if period == "Daily" and aggregation <= AggregationPeriod.FOUR_HOURS {
+            isNew = isStart or Date() != Date()[1];
+        }
+        else if period == "Weekly" and aggregation <= AggregationPeriod.TWO_DAYS {
+            isNew = isStart or Date().yyyyww != Date().yyyyww[1];
+        }
+        else if period == "Monthly" and aggregation <= AggregationPeriod.WEEK {
+            isNew = isStart or Date().yyyymm != Date().yyyymm[1];
+        }
+        else if period == "MonthlyOPEX" and aggregation <= AggregationPeriod.WEEK {
+            isNew = isStart or Date().yyyymmOpex != Date().yyyymmOpex[1];
+        }
+        else if period == "Quarterly" and aggregation <= AggregationPeriod.MONTH {
+            isNew = isStart or Date().yyyyq != Date().yyyyq[1];
+        }
+        else if period == "QuarterlyOPEX" and aggregation <= AggregationPeriod.MONTH{
+            isNew = isStart or Date().yyyyqOpex != Date().yyyyqOpex[1];
+        }
+        else if period == "Yearly" and aggregation <= AggregationPeriod.QUARTER {
+            isNew = isStart or Date().yyyy != Date().yyyy[1];
+        }
+        else if period == "SinceDate" {
+            isNew = Date() >= since and (Date()[1] < since or isStart);
+        }
+        else if period == "CandlesAgo" {
+            isNew = isStart and candles > endBar or BarNumber() + candles == endBar;
+        }
+        else {
+            isNew = isStart;
+        }
+
+        def isActive = isNew or isActive[1];
+
+        plot P = isNew;
+        P.hide();
+    }
+###
+
+
+### INPUTS ###
+    input ShowAbove50  = yes;
+    input ShowAbove200 = yes;
+
+    input Display = {
+        default "Cumulative",
+        "Ratio"
+    };
+
+    input Values = {
+        default "Absolute",
+        "Relative"
+    };
+
+    input Quote = {
+        default "Close",
+        "Open",
+        "High",
+        "Low",
+        "HL2",
+        "HLC3",
+        "OHLC4"
+    };
+
+    input Sanitize  = no;
+    input Oscillate = 0;
+
+    input Period = {
+        default "Chart",
+        "Daily",
+        "Weekly",
+        "Monthly",
+        "MonthlyOPEX",
+        "Quarterly",
+        "QuarterlyOPEX",
+        "Yearly",
+        "CandlesAgo",
+        "SinceDate"
+    };
+
+    @Date input SinceDate = 20221010;
+    input CandlesAgo      = 100;
+    input Separators      = yes;
+    input Connectors      = no;
+###
+
+
+### LOOKUPS ###
+    def type;
+    switch (Quote) {
+        case "Open"  : type = FundamentalType.OPEN;
+        case "Close" : type = FundamentalType.CLOSE;
+        case "High"  : type = FundamentalType.HIGH;
+        case "Low"   : type = FundamentalType.LOW;
+        case "HL2"   : type = FundamentalType.HL2;
+        case "HLC3"  : type = FundamentalType.HLC3;
+        case "OHLC4" : type = FundamentalType.OHLC4;
+    }
+
+    def raw50  = Fundamental(type, "$SPXA50R");
+    def raw200 = Fundamental(type, "$SPXA200R");
+
+    def data50 = if Sanitize
+        then Value(raw50).value
+        else raw50;
+
+    def data200 = if Sanitize
+        then Value(raw200).value
+        else raw200;
+
+    def dataTotal = 500;
+###
+
+
+### CALCULATIONS ###
+    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
+    def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
+
+    # Relativized
+    def rel50 = if Values == Values.Relative
+        then data50
+        else data50 * dataTotal;
+
+    def rel200 = if Values == Values.Relative
+        then data200
+        else data200 * dataTotal;
+
+    def relTotal = if Values == Values.Relative
+        then 1
+        else dataTotal;
+
+    # Deltas
+    def change50  = rel50  - rel50[1];
+    def change200 = rel200 - rel200[1];
+
+    # Oscillation
+    def osc50 = change50 - if Oscillate > 1
+        then Average(change50, Max(Oscillate, 1))
+        else 0;
+
+    def osc200 = change200 - if Oscillate > 1
+        then Average(change200, Max(Oscillate, 1))
+        else 0;
+
+    #Cumulation
+    def sum50;
+    def sum200;
+    if !Chart().isValidBar or !isActivePeriod {
+        sum50  = Double.NaN;
+        sum200 = Double.NaN;
+    }
+    else if isNewPeriod and Period == Period.Chart {
+        sum50  = rel50;
+        sum200 = rel200;
+    }
+    else if isNewPeriod {
+        sum50  = change50;
+        sum200 = change200;
+    }
+    else {
+        sum50  = sum50[1]  + change50;
+        sum200 = sum200[1] + change200;
+    }
+###
+
+
+### Plots
+    DefineGlobalColor("Line",       CreateColor(48, 48, 48));
+    DefineGlobalColor("Separator",  CreateColor(32, 32, 32));
+    DefineGlobalColor("Background", CreateColor(12, 12, 12));
+
+    # Cumulative 200
+    plot Above200 = sum200;
+    Above200.SetHiding(!ShowAbove200 or Display != Display.Cumulative);
+    Above200.DefineColor("Up", Color.UPTICK);
+    Above200.DefineColor("Down", Color.DOWNTICK);
+    Above200.DefineColor("Neutral", Color.DARK_GRAY);
+    Above200.SetDefaultColor(Above200.Color("Neutral"));
+
+    Above200.AssignValueColor(
+        if !Connectors and isNewPeriod and isActivePeriod[1]
+            then GlobalColor("Background")
+        else if ShowAbove50 and ShowAbove200 or sum200 > 0
+            then Above200.Color("Up")
+        else if sum200 < 0
+            then Above200.Color("Down")
+            else Above200.Color("Neutral")
+    );
+
+    # Ratio 200
+    plot Ratio200 = osc200;
+    Ratio200.SetHiding(!ShowAbove200 or Display != Display.Ratio);
+    Ratio200.DefineColor("Up", Color.UPTICK);
+    Ratio200.DefineColor("Down", Color.DOWNTICK);
+    Ratio200.DefineColor("Neutral", Color.DARK_GRAY);
+    Ratio200.SetDefaultColor(Ratio200.Color("Neutral"));
+
+    Ratio200.AssignValueColor(
+        if ShowAbove50 and ShowAbove200 or osc200 > 0
+            then Ratio200.Color("Up")
+        else if osc200 < 0
+            then Ratio200.Color("Down")
+            else Ratio200.Color("Neutral")
+    );
+
+    # Cumulative 50
+    plot Above50 = sum50;
+    Above50.SetHiding(!ShowAbove50 or Display != Display.Cumulative);
+    Above50.DefineColor("Up", Color.UPTICK);
+    Above50.DefineColor("Down", Color.DOWNTICK);
+    Above50.DefineColor("Neutral", Color.DARK_GRAY);
+    Above50.SetDefaultColor(Above50.Color("Neutral"));
+
+    Above50.AssignValueColor(
+        if !Connectors and isNewPeriod and isActivePeriod[1]
+            then GlobalColor("Background")
+        else if ShowAbove50 and ShowAbove200 or sum50 < 0
+            then Above50.Color("Down")
+        else if sum50 > 0
+            then Above50.Color("Up")
+            else Above50.Color("Neutral")
+    );
+
+    # Ratio 50
+    plot Ratio50 = osc50;
+    Ratio50.SetHiding(!ShowAbove50 or Display != Display.Ratio);
+    Ratio50.DefineColor("Up", Color.UPTICK);
+    Ratio50.DefineColor("Down", Color.DOWNTICK);
+    Ratio50.DefineColor("Neutral", Color.DARK_GRAY);
+    Ratio50.SetDefaultColor(Ratio50.Color("Neutral"));
+
+    Ratio50.AssignValueColor(
+        if ShowAbove50 and ShowAbove200 or osc50 < 0
+            then Ratio50.Color("Down")
+        else if osc50 > 0
+            then Ratio50.Color("Up")
+            else Ratio50.Color("Neutral")
+    );
+
+    # Mid
+    plot Mid = if Values == Values.Relative then 0.5 else dataTotal / 2;
+    Mid.SetDefaultColor(GlobalColor("Line"));
+    Mid.HideBubble();
+    Mid.HideTitle();
+    Mid.Hide();
+
+    # Separators
+    AddVerticalLine(
+        visible = Separators and isNewPeriod and isActivePeriod[1],
+        color   = GlobalColor("Separator"),
+        stroke  = Curve.SHORT_DASH,
+        text    = ""
+    );
+###

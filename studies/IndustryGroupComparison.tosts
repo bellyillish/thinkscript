@@ -1,0 +1,619 @@
+declare lower;
+
+
+### SCRIPTS ###
+    script Date {
+        def yyyymmdd = GetYYYYMMDD();
+        def yyyy     = GetYear();
+        def mm       = GetMonth();
+        def doy      = GetDay();
+        def dom      = GetDayOfMonth(yyyymmdd);
+        def dow      = GetDayOfWeek(yyyymmdd);
+        def dowj1    = GetDayOfWeek(yyyy * 10000 + 0101);
+        def ww       = Ceil((doy + 1 + if dowj1 >= 5 then dowj1 - 7 else dowj1) / 7);
+        def q        = Ceil(mm / 3);
+        def yyyyq    = yyyy * 10 + q;
+        def yyyymm   = yyyy * 100 + mm;
+        def yyyyww   = yyyy * 100 + ww;
+
+        def isAfterOpex    = (dom - 14 - if dow > 5 then dow - 5 else dow + 2) > 0;
+        def isEndOfQuarter = mm % 3 == 0;
+
+        def qOpex = if q + isAfterOpex * isEndOfQuarter <= 4
+            then q + isAfterOpex * isEndOfQuarter
+            else 1;
+
+        def mmOpex = if mm + isAfterOpex <= 12
+            then mm + isAfterOpex
+            else 1;
+
+        def yyyyOpex = if mm + isAfterOpex <= 12
+            then yyyy
+            else yyyy + 1;
+
+        def yyyyqOpex  = yyyyOpex * 10  + qOpex;
+        def yyyymmOpex = yyyyOpex * 100 + mmOpex;
+
+        plot P = yyyymmdd;
+        P.hide();
+    }
+
+    script Chart {
+        def number        = BarNumber();
+        def aggregation   = GetAggregationPeriod();
+        def startBar      = First(number);
+        def startOffset   = number - startBar;
+        def isStart       = number == startBar;
+        def endBar        = HighestAll(number * !IsNaN(close));
+        def endOffset     = number - endBar;
+        def isEnd         = number == endBar;
+        def isValidBar    = number between startBar and endBar;
+        def isIntradayBar = Date() == Date()[1];
+        def isIntraday    = aggregation <  AggregationPeriod.DAY;
+        def isDaily       = aggregation == AggregationPeriod.DAY;
+        def isMultiDay    = aggregation >  AggregationPeriod.DAY;
+
+        plot P = Double.NaN;
+        P.hide();
+    }
+
+    script Value {
+        input raw    = 0;
+        input minRaw = 0;
+        input maxRaw = 0;
+
+        def minValue = if minRaw < 0 then minRaw else -999999999999999;
+        def maxValue = if maxRaw > 0 then maxRaw else  999999999999999;
+
+        def isValid;
+        if IsNaN(raw) or IsInfinite(raw) {
+            isValid = no;
+        }
+        else {
+            isValid = raw between minValue and maxValue;
+        }
+
+        def value = if isValid or !Chart().isValidBar
+            then raw
+            else value[1];
+
+        plot P = Double.NaN;
+        P.hide();
+    }
+
+    script Periods {
+        input period  = "Chart";
+        input since   = 20221010;
+        input candles = 100;
+
+        def isStart     = Chart().isStart;
+        def endBar      = Chart().endBar;
+        def aggregation = GetAggregationPeriod();
+
+        def isNew;
+        if period == "Daily" and aggregation <= AggregationPeriod.FOUR_HOURS {
+            isNew = isStart or Date() != Date()[1];
+        }
+        else if period == "Weekly" and aggregation <= AggregationPeriod.TWO_DAYS {
+            isNew = isStart or Date().yyyyww != Date().yyyyww[1];
+        }
+        else if period == "Monthly" and aggregation <= AggregationPeriod.WEEK {
+            isNew = isStart or Date().yyyymm != Date().yyyymm[1];
+        }
+        else if period == "MonthlyOPEX" and aggregation <= AggregationPeriod.WEEK {
+            isNew = isStart or Date().yyyymmOpex != Date().yyyymmOpex[1];
+        }
+        else if period == "Quarterly" and aggregation <= AggregationPeriod.MONTH {
+            isNew = isStart or Date().yyyyq != Date().yyyyq[1];
+        }
+        else if period == "QuarterlyOPEX" and aggregation <= AggregationPeriod.MONTH{
+            isNew = isStart or Date().yyyyqOpex != Date().yyyyqOpex[1];
+        }
+        else if period == "Yearly" and aggregation <= AggregationPeriod.QUARTER {
+            isNew = isStart or Date().yyyy != Date().yyyy[1];
+        }
+        else if period == "SinceDate" {
+            isNew = Date() >= since and (Date()[1] < since or isStart);
+        }
+        else if period == "CandlesAgo" {
+            isNew = isStart and candles > endBar or BarNumber() + candles == endBar;
+        }
+        else {
+            isNew = isStart;
+        }
+
+        def isActive = isNew or isActive[1];
+
+        plot P = isNew;
+        P.hide();
+    }
+
+    script LatestPeriod {
+        input Period  = "Chart";
+        input Since   = 20221010;
+        input Candles = 100;
+
+        def endBar    = Chart().endBar;
+        def endOffset = Chart().endOffset;
+        def date      = GetYYYYMMDD();
+
+        def isLatest;
+        if Period == "Daily" {
+            isLatest = date == GetValue(date, endOffset);
+        }
+        else if Period == "Weekly" {
+            isLatest = Date().yyyyww == GetValue(Date().yyyyww, endOffset);
+        }
+        else if Period == "Monthly" {
+            isLatest = Date().yyyymm == GetValue(Date().yyyymm, endOffset);
+        }
+        else if Period == "MonthlyOPEX" {
+            isLatest = Date().yyyymm == GetValue(Date().yyyymm, endOffset);
+        }
+        else if Period == "Quarterly" {
+            isLatest = Date().yyyyq == GetValue(Date().yyyyq, endOffset);
+        }
+        else if Period == "QuarterlyOPEX" {
+            isLatest = Date().yyyyqOpex == GetValue(Date().yyyyqOpex, endOffset);
+        }
+        else if Period == "Yearly" {
+            isLatest = Date().yyyy == GetValue(Date().yyyy, endOffset);
+        }
+        else if Period == "SinceDate" {
+            isLatest = date >= Since;
+        }
+        else if Period == "CandlesAgo" {
+            isLatest = BarNumber() >= endBar - Candles;
+        }
+        else {
+            isLatest = yes;
+        }
+
+        plot P = isLatest;
+        P.hide();
+    }
+###
+
+
+### INPUTS ###
+    input Display = {
+        default "Ratio",
+        "Overlay"
+    };
+
+    input Cap = {
+        default "1500",
+        "500",
+        "400",
+        "600"
+    };
+
+    input Performance = {
+        default "All",
+        "Leading",
+        "Lagging"
+    };
+
+    input Quote = {
+        default "Close",
+        "Open",
+        "High",
+        "Low",
+        "HL2",
+        "HLC3",
+        "OHLC4"
+    };
+
+    input Period = {
+        default "Chart",
+        "Daily",
+        "Weekly",
+        "Monthly",
+        "MonthlyOPEX",
+        "Quarterly",
+        "QuarterlyOPEX",
+        "Yearly",
+        "CandlesAgo",
+        "SinceDate"
+    };
+
+    @Date input SinceDate = 20250408;
+    input CandlesAgo      = 100;
+    input Separators      = yes;
+    input Connectors      = no;
+    input EndPeriodOnly   = yes;
+###
+
+
+### LOOKUPS ###
+    def type;
+    switch (Quote) {
+        case "Open"  : type = FundamentalType.OPEN;
+        case "High"  : type = FundamentalType.HIGH;
+        case "Low"   : type = FundamentalType.LOW;
+        case "HL2"   : type = FundamentalType.HL2;
+        case "HLC3"  : type = FundamentalType.HLC3;
+        case "OHLC4" : type = FundamentalType.OHLC4;
+        default      : type = FundamentalType.CLOSE;
+    }
+
+    def valueIndex = Fundamental(type, "$SP" + Cap);
+    def value1010  = Fundamental(type, "$SP" + Cap + "#1010");
+    def value1510  = Fundamental(type, "$SP" + Cap + "#1510");
+    def value2010  = Fundamental(type, "$SP" + Cap + "#2010");
+    def value2020  = Fundamental(type, "$SP" + Cap + "#2020");
+    def value2030  = Fundamental(type, "$SP" + Cap + "#2030");
+    def value2510  = Fundamental(type, "$SP" + Cap + "#2510");
+    def value2520  = Fundamental(type, "$SP" + Cap + "#2520");
+    def value2530  = Fundamental(type, "$SP" + Cap + "#2530");
+    def value2550  = Fundamental(type, "$SP" + Cap + "#2550");
+    def value3010  = Fundamental(type, "$SP" + Cap + "#3010");
+    def value3020  = Fundamental(type, "$SP" + Cap + "#3020");
+    def value3030  = Fundamental(type, "$SP" + Cap + "#3030");
+    def value3510  = Fundamental(type, "$SP" + Cap + "#3510");
+    def value3520  = Fundamental(type, "$SP" + Cap + "#3520");
+    def value4010  = Fundamental(type, "$SP" + Cap + "#4010");
+    def value4020  = Fundamental(type, "$SP" + Cap + "#4020");
+    def value4030  = Fundamental(type, "$SP" + Cap + "#4030");
+    def value4510  = Fundamental(type, "$SP" + Cap + "#4510");
+    def value4520  = Fundamental(type, "$SP" + Cap + "#4520");
+    def value4530  = Fundamental(type, "$SP" + Cap + "#4530");
+    def value5010  = Fundamental(type, "$SP" + Cap + "#5010");
+    def value5020  = Fundamental(type, "$SP" + Cap + "#5020");
+    def value5510  = Fundamental(type, "$SP" + Cap + "#5510");
+    def value6010  = Fundamental(type, "$SP" + Cap + "#6010");
+    def value6020  = Fundamental(type, "$SP" + Cap + "#6020");
+###
+
+
+### CALCULATIONS ###
+    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
+    def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
+    def isLatestPeriod = LatestPeriod(Period, SinceDate, CandlesAgo);
+
+    def startBar    = Chart().startBar;
+    def isStartBar = Chart().isStart;
+    def isEndBar   = Chart().isEnd;
+    def endOffset  = Chart().endOffset;
+    def isValidBar = Chart().isValidBar;
+
+    def changeIndex;
+    def ratioOffset;
+    def change1010;
+    def change1510;
+    def change2010;
+    def change2020;
+    def change2030;
+    def change2510;
+    def change2520;
+    def change2530;
+    def change2550;
+    def change3010;
+    def change3020;
+    def change3030;
+    def change3510;
+    def change3520;
+    def change4010;
+    def change4020;
+    def change4030;
+    def change4510;
+    def change4520;
+    def change4530;
+    def change5010;
+    def change5020;
+    def change5510;
+    def change6010;
+    def change6020;
+
+    if !isValidBar or !IsActivePeriod or EndPeriodOnly and !isLatestPeriod {
+        ratioOffset = Double.NaN;
+        changeIndex = Double.NaN;
+        change1010  = Double.NaN;
+        change1510  = Double.NaN;
+        change2010  = Double.NaN;
+        change2020  = Double.NaN;
+        change2030  = Double.NaN;
+        change2510  = Double.NaN;
+        change2520  = Double.NaN;
+        change2530  = Double.NaN;
+        change2550  = Double.NaN;
+        change3010  = Double.NaN;
+        change3020  = Double.NaN;
+        change3030  = Double.NaN;
+        change3510  = Double.NaN;
+        change3520  = Double.NaN;
+        change4010  = Double.NaN;
+        change4020  = Double.NaN;
+        change4030  = Double.NaN;
+        change4510  = Double.NaN;
+        change4520  = Double.NaN;
+        change4530  = Double.NaN;
+        change5010  = Double.NaN;
+        change5020  = Double.NaN;
+        change5510  = Double.NaN;
+        change6010  = Double.NaN;
+        change6020  = Double.NaN;
+    }
+    else if isNewPeriod {
+        ratioOffset = if Display == Display.Ratio
+            then valueIndex / valueIndex[1] - 1
+            else 0;
+
+        changeIndex = valueIndex / valueIndex[1] - ratioOffset - 1;
+        change1010  = value1010 / value1010[1] - ratioOffset - 1;
+        change1510  = value1510 / value1510[1] - ratioOffset - 1;
+        change2010  = value2010 / value2010[1] - ratioOffset - 1;
+        change2020  = value2020 / value2020[1] - ratioOffset - 1;
+        change2030  = value2030 / value2030[1] - ratioOffset - 1;
+        change2510  = value2510 / value2510[1] - ratioOffset - 1;
+        change2520  = value2520 / value2520[1] - ratioOffset - 1;
+        change2530  = value2530 / value2530[1] - ratioOffset - 1;
+        change2550  = value2550 / value2550[1] - ratioOffset - 1;
+        change3010  = value3010 / value3010[1] - ratioOffset - 1;
+        change3020  = value3020 / value3020[1] - ratioOffset - 1;
+        change3030  = value3030 / value3030[1] - ratioOffset - 1;
+        change3510  = value3510 / value3510[1] - ratioOffset - 1;
+        change3520  = value3520 / value3520[1] - ratioOffset - 1;
+        change4010  = value4010 / value4010[1] - ratioOffset - 1;
+        change4020  = value4020 / value4020[1] - ratioOffset - 1;
+        change4030  = value4030 / value4030[1] - ratioOffset - 1;
+        change4510  = value4510 / value4510[1] - ratioOffset - 1;
+        change4520  = value4520 / value4520[1] - ratioOffset - 1;
+        change4530  = value4530 / value4530[1] - ratioOffset - 1;
+        change5010  = value5010 / value5010[1] - ratioOffset - 1;
+        change5020  = value5020 / value5020[1] - ratioOffset - 1;
+        change5510  = value5510 / value5510[1] - ratioOffset - 1;
+        change6010  = value6010 / value6010[1] - ratioOffset - 1;
+        change6020  = value6020 / value6020[1] - ratioOffset - 1;
+    }
+    else {
+        ratioOffset = if Display == Display.Ratio
+            then valueIndex / valueIndex[1] - 1
+            else 0;
+
+        changeIndex = changeIndex[1] + valueIndex / valueIndex[1] - ratioOffset - 1;
+        change1010  = change1010[1] + value1010 / value1010[1] - ratioOffset - 1;
+        change1510  = change1510[1] + value1510 / value1510[1] - ratioOffset - 1;
+        change2010  = change2010[1] + value2010 / value2010[1] - ratioOffset - 1;
+        change2020  = change2020[1] + value2020 / value2020[1] - ratioOffset - 1;
+        change2030  = change2030[1] + value2030 / value2030[1] - ratioOffset - 1;
+        change2510  = change2510[1] + value2510 / value2510[1] - ratioOffset - 1;
+        change2520  = change2520[1] + value2520 / value2520[1] - ratioOffset - 1;
+        change2530  = change2530[1] + value2530 / value2530[1] - ratioOffset - 1;
+        change2550  = change2550[1] + value2550 / value2550[1] - ratioOffset - 1;
+        change3010  = change3010[1] + value3010 / value3010[1] - ratioOffset - 1;
+        change3020  = change3020[1] + value3020 / value3020[1] - ratioOffset - 1;
+        change3030  = change3030[1] + value3030 / value3030[1] - ratioOffset - 1;
+        change3510  = change3510[1] + value3510 / value3510[1] - ratioOffset - 1;
+        change3520  = change3520[1] + value3520 / value3520[1] - ratioOffset - 1;
+        change4010  = change4010[1] + value4010 / value4010[1] - ratioOffset - 1;
+        change4020  = change4020[1] + value4020 / value4020[1] - ratioOffset - 1;
+        change4030  = change4030[1] + value4030 / value4030[1] - ratioOffset - 1;
+        change4510  = change4510[1] + value4510 / value4510[1] - ratioOffset - 1;
+        change4520  = change4520[1] + value4520 / value4520[1] - ratioOffset - 1;
+        change4530  = change4530[1] + value4530 / value4530[1] - ratioOffset - 1;
+        change5010  = change5010[1] + value5010 / value5010[1] - ratioOffset - 1;
+        change5020  = change5020[1] + value5020 / value5020[1] - ratioOffset - 1;
+        change5510  = change5510[1] + value5510 / value5510[1] - ratioOffset - 1;
+        change6010  = change6010[1] + value6010 / value6010[1] - ratioOffset - 1;
+        change6020  = change6020[1] + value6020 / value6020[1] - ratioOffset - 1;
+    }
+###
+
+
+### Plots
+    DefineGlobalColor("Line",       CreateColor(48, 48, 48));
+    DefineGlobalColor("Separator",  CreateColor(32, 32, 32));
+    DefineGlobalColor("Background", CreateColor(12, 12, 12));
+    DefineGlobalColor("C1010",      CreateColor(102, 255, 137));
+    DefineGlobalColor("C1510",      CreateColor(179, 179, 179));
+    DefineGlobalColor("C2010",      CreateColor(255, 183, 128));
+    DefineGlobalColor("C2020",      CreateColor(229, 134, 62));
+    DefineGlobalColor("C2030",      CreateColor(192, 109, 45));
+    DefineGlobalColor("C2510",      CreateColor(255, 102, 219));
+    DefineGlobalColor("C2520",      CreateColor(226, 45, 184));
+    DefineGlobalColor("C2530",      CreateColor(179, 42, 147));
+    DefineGlobalColor("C2550",      CreateColor(113, 44, 97));
+    DefineGlobalColor("C3010",      CreateColor(107, 102, 255));
+    DefineGlobalColor("C3020",      CreateColor(51, 45, 226));
+    DefineGlobalColor("C3030",      CreateColor(47, 42, 179));
+    DefineGlobalColor("C3510",      CreateColor(255, 128, 149));
+    DefineGlobalColor("C3520",      CreateColor(229, 62, 90));
+    DefineGlobalColor("C4010",      CreateColor(175, 255, 128));
+    DefineGlobalColor("C4020",      CreateColor(124, 229, 62));
+    DefineGlobalColor("C4030",      CreateColor(100, 192, 45));
+    DefineGlobalColor("C4510",      CreateColor(102, 189, 255));
+    DefineGlobalColor("C4520",      CreateColor(45, 148, 226));
+    DefineGlobalColor("C4530",      CreateColor(42, 120, 179));
+    DefineGlobalColor("C5010",      CreateColor(199, 102, 255));
+    DefineGlobalColor("C5020",      CreateColor(160, 45, 226));
+    DefineGlobalColor("C5510",      CreateColor(251, 255, 128));
+    DefineGlobalColor("C6010",      CreateColor(102, 255, 229));
+    DefineGlobalColor("C6020",      CreateColor(45, 226, 196));
+
+    def hide1010 = if isStartBar then Performance == Performance.Leading and GetValue(change1010 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change1010 > changeIndex, endOffset) else hide1010[1];
+    def hide1510 = if isStartBar then Performance == Performance.Leading and GetValue(change1510 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change1510 > changeIndex, endOffset) else hide1510[1];
+    def hide2010 = if isStartBar then Performance == Performance.Leading and GetValue(change2010 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change2010 > changeIndex, endOffset) else hide2010[1];
+    def hide2020 = if isStartBar then Performance == Performance.Leading and GetValue(change2020 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change2020 > changeIndex, endOffset) else hide2020[1];
+    def hide2030 = if isStartBar then Performance == Performance.Leading and GetValue(change2030 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change2030 > changeIndex, endOffset) else hide2030[1];
+    def hide2510 = if isStartBar then Performance == Performance.Leading and GetValue(change2510 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change2510 > changeIndex, endOffset) else hide2510[1];
+    def hide2520 = if isStartBar then Performance == Performance.Leading and GetValue(change2520 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change2520 > changeIndex, endOffset) else hide2520[1];
+    def hide2530 = if isStartBar then Performance == Performance.Leading and GetValue(change2530 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change2530 > changeIndex, endOffset) else hide2530[1];
+    def hide2550 = if isStartBar then Performance == Performance.Leading and GetValue(change2550 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change2550 > changeIndex, endOffset) else hide2550[1];
+    def hide3010 = if isStartBar then Performance == Performance.Leading and GetValue(change3010 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change3010 > changeIndex, endOffset) else hide3010[1];
+    def hide3020 = if isStartBar then Performance == Performance.Leading and GetValue(change3020 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change3020 > changeIndex, endOffset) else hide3020[1];
+    def hide3030 = if isStartBar then Performance == Performance.Leading and GetValue(change3030 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change3030 > changeIndex, endOffset) else hide3030[1];
+    def hide3510 = if isStartBar then Performance == Performance.Leading and GetValue(change3510 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change3510 > changeIndex, endOffset) else hide3510[1];
+    def hide3520 = if isStartBar then Performance == Performance.Leading and GetValue(change3520 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change3520 > changeIndex, endOffset) else hide3520[1];
+    def hide4010 = if isStartBar then Performance == Performance.Leading and GetValue(change4010 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change4010 > changeIndex, endOffset) else hide4010[1];
+    def hide4020 = if isStartBar then Performance == Performance.Leading and GetValue(change4020 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change4020 > changeIndex, endOffset) else hide4020[1];
+    def hide4030 = if isStartBar then Performance == Performance.Leading and GetValue(change4030 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change4030 > changeIndex, endOffset) else hide4030[1];
+    def hide4510 = if isStartBar then Performance == Performance.Leading and GetValue(change4510 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change4510 > changeIndex, endOffset) else hide4510[1];
+    def hide4520 = if isStartBar then Performance == Performance.Leading and GetValue(change4520 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change4520 > changeIndex, endOffset) else hide4520[1];
+    def hide4530 = if isStartBar then Performance == Performance.Leading and GetValue(change4530 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change4530 > changeIndex, endOffset) else hide4530[1];
+    def hide5010 = if isStartBar then Performance == Performance.Leading and GetValue(change5010 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change5010 > changeIndex, endOffset) else hide5010[1];
+    def hide5020 = if isStartBar then Performance == Performance.Leading and GetValue(change5020 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change5020 > changeIndex, endOffset) else hide5020[1];
+    def hide5510 = if isStartBar then Performance == Performance.Leading and GetValue(change5510 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change5510 > changeIndex, endOffset) else hide5510[1];
+    def hide6010 = if isStartBar then Performance == Performance.Leading and GetValue(change6010 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change6010 > changeIndex, endOffset) else hide6010[1];
+    def hide6020 = if isStartBar then Performance == Performance.Leading and GetValue(change6020 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change6020 > changeIndex, endOffset) else hide6020[1];
+
+    def connect     = !isNewPeriod or Connectors;
+    def showBubbles = IsActivePeriod and isNewPeriod[-1] or isEndBar;
+
+    # SP
+    plot SP = changeIndex;
+    SP.SetHiding(Display != Display.Overlay);
+    SP.SetDefaultColor(Color.WHITE);
+    SP.SetLineWeight(3);
+    SP.HideBubble();
+    SP.HideTitle();
+    AddChartBubble(showBubbles and Display == Display.Overlay, SP, "$SP" + Cap, Color.WHITE);
+
+    # SP Outline
+    plot SPOutline = changeIndex;
+    SPOutline.SetHiding(Display != Display.Overlay);
+    SPOutline.SetDefaultColor(GlobalColor("Background"));
+    SPOutline.SetLineWeight(5);
+    SPOutline.HideBubble();
+    SPOutline.HideTitle();
+
+    plot SP1010 = if hide1010 then Double.NaN else change1010;
+    SP1010.SetHiding(hide1010);
+    SP1010.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C1010"));
+    AddChartBubble(showBubbles and !hide1010, SP1010, "Energy", GlobalColor("C1010"));
+
+    plot SP1510 = if hide1510 then Double.NaN else change1510;
+    SP1510.SetHiding(hide1510);
+    SP1510.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C1510"));
+    AddChartBubble(showBubbles and !hide1510, SP1510, "Materials", GlobalColor("C1510"));
+
+    plot SP2010 = if hide2010 then Double.NaN else change2010;
+    SP2010.SetHiding(hide2010);
+    SP2010.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C2010"));
+    AddChartBubble(showBubbles and !hide2010, SP2010, "Capital Goods", GlobalColor("C2010"));
+
+    plot SP2020 = if hide2020 then Double.NaN else change2020;
+    SP2020.SetHiding(hide2020);
+    SP2020.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C2020"));
+    AddChartBubble(showBubbles and !hide2020, SP2020, "Commercial & Professional Services", GlobalColor("C2020"));
+
+    plot SP2030 = if hide2030 then Double.NaN else change2030;
+    SP2030.SetHiding(hide2030);
+    SP2030.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C2030"));
+    AddChartBubble(showBubbles and !hide2030, SP2030, "Transportation", GlobalColor("C2030"));
+
+    plot SP2510 = if hide2510 then Double.NaN else change2510;
+    SP2510.SetHiding(hide2510);
+    SP2510.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C2510"));
+    AddChartBubble(showBubbles and !hide2510, SP2510, "Automobiles & Components", GlobalColor("C2510"));
+
+    plot SP2520 = if hide2520 then Double.NaN else change2520;
+    SP2520.SetHiding(hide2520);
+    SP2520.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C2520"));
+    AddChartBubble(showBubbles and !hide2520, SP2520, "Consumer Durables & Apparel", GlobalColor("C2520"));
+
+    plot SP2530 = if hide2530 then Double.NaN else change2530;
+    SP2530.SetHiding(hide2530);
+    SP2530.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C2530"));
+    AddChartBubble(showBubbles and !hide2530, SP2530, "Consumer Services", GlobalColor("C2530"));
+
+    plot SP2550 = if hide2550 then Double.NaN else change2550;
+    SP2550.SetHiding(hide2550);
+    SP2550.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C2550"));
+    AddChartBubble(showBubbles and !hide2550, SP2550, "Consumer Discretionary Distribution & Retail", GlobalColor("C2550"));
+
+    plot SP3010 = if hide3010 then Double.NaN else change3010;
+    SP3010.SetHiding(hide3010);
+    SP3010.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C3010"));
+    AddChartBubble(showBubbles and !hide3010, SP3010, "Consumer Staples Distribution & Retail", GlobalColor("C3010"));
+
+    plot SP3020 = if hide3020 then Double.NaN else change3020;
+    SP3020.SetHiding(hide3020);
+    SP3020.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C3020"));
+    AddChartBubble(showBubbles and !hide3020, SP3020, "Food Beverage & Tobacco", GlobalColor("C3020"));
+
+    plot SP3030 = if hide3030 then Double.NaN else change3030;
+    SP3030.SetHiding(hide3030);
+    SP3030.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C3030"));
+    AddChartBubble(showBubbles and !hide3030, SP3030, "Household & Personal Products", GlobalColor("C3030"));
+
+    plot SP3510 = if hide3510 then Double.NaN else change3510;
+    SP3510.SetHiding(hide3510);
+    SP3510.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C3510"));
+    AddChartBubble(showBubbles and !hide3510, SP3510, "Health Care Equipment & Services", GlobalColor("C3510"));
+
+    plot SP3520 = if hide3520 then Double.NaN else change3520;
+    SP3520.SetHiding(hide3520);
+    SP3520.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C3520"));
+    AddChartBubble(showBubbles and !hide3520, SP3520, "Pharmaceuticals, Biotechnology & Life Sciences", GlobalColor("C3520"));
+
+    plot SP4010 = if hide4010 then Double.NaN else change4010;
+    SP4010.SetHiding(hide4010);
+    SP4010.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C4010"));
+    AddChartBubble(showBubbles and !hide4010, SP4010, "Banks", GlobalColor("C4010"));
+
+    plot SP4020 = if hide4020 then Double.NaN else change4020;
+    SP4020.SetHiding(hide4020);
+    SP4020.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C4020"));
+    AddChartBubble(showBubbles and !hide4020, SP4020, "Financial Services", GlobalColor("C4020"));
+
+    plot SP4030 = if hide4030 then Double.NaN else change4030;
+    SP4030.SetHiding(hide4030);
+    SP4030.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C4030"));
+    AddChartBubble(showBubbles and !hide4030, SP4030, "Insurance", GlobalColor("C4030"));
+
+    plot SP4510 = if hide4510 then Double.NaN else change4510;
+    SP4510.SetHiding(hide4510);
+    SP4510.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C4510"));
+    AddChartBubble(showBubbles and !hide4510, SP4510, "Software & Services", GlobalColor("C4510"));
+
+    plot SP4520 = if hide4520 then Double.NaN else change4520;
+    SP4520.SetHiding(hide4520);
+    SP4520.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C4520"));
+    AddChartBubble(showBubbles and !hide4520, SP4520, "Technology Hardware & Equipment", GlobalColor("C4520"));
+
+    plot SP4530 = if hide4530 then Double.NaN else change4530;
+    SP4530.SetHiding(hide4530);
+    SP4530.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C4530"));
+    AddChartBubble(showBubbles and !hide4530, SP4530, "Semiconductors & Semiconductor Equipment", GlobalColor("C4530"));
+
+    plot SP5010 = if hide5010 then Double.NaN else change5010;
+    SP5010.SetHiding(hide5010);
+    SP5010.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C5010"));
+    AddChartBubble(showBubbles and !hide5010, SP5010, "Telecommunication Services", GlobalColor("C5010"));
+
+    plot SP5020 = if hide5020 then Double.NaN else change5020;
+    SP5020.SetHiding(hide5020);
+    SP5020.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C5020"));
+    AddChartBubble(showBubbles and !hide5020, SP5020, "Media & Entertainment", GlobalColor("C5020"));
+
+    plot SP5510 = if hide5510 then Double.NaN else change5510;
+    SP5510.SetHiding(hide5510);
+    SP5510.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C5510"));
+    AddChartBubble(showBubbles and !hide5510, SP5510, "Utilities", GlobalColor("C5510"));
+
+    plot SP6010 = if hide6010 then Double.NaN else change6010;
+    SP6010.SetHiding(hide6010);
+    SP6010.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C6010"));
+    AddChartBubble(showBubbles and !hide6010, SP6010, "Equity Real Estate Investment Trusts (REITs)", GlobalColor("C6010"));
+
+    plot SP6020 = if hide6020 then Double.NaN else change6020;
+    SP6020.SetHiding(hide6020);
+    SP6020.AssignValueColor(if !connect then GlobalColor("Background") else GlobalColor("C6020"));
+    AddChartBubble(showBubbles and !hide6020, SP6020, "Real Estate Management & Development", GlobalColor("C6020"));
+
+    # Mid
+    plot Mid = changeIndex;
+    Mid.SetHiding(Display != Display.Ratio);
+    Mid.SetDefaultColor(GlobalColor("Line"));
+    Mid.HideBubble();
+    Mid.HideTitle();
+
+    # Dividers
+    AddVerticalLine(
+        visible = Separators and isNewPeriod and isActivePeriod[1],
+        color   = GlobalColor("Separator"),
+        stroke  = Curve.SHORT_DASH,
+        text    = ""
+    );
+###
