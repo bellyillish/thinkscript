@@ -148,19 +148,17 @@ declare real_size;
     };
 
     input Quote = {
-        default "Close",
         "Open",
         "High",
         "Low",
-        "RTH",
-        "ETH",
+        default "Close",
         "HL2",
         "HLC3",
-        "OHLC4"
+        "OHLC4",
+        "VWAP",
+        "RTH",
+        "ETH"
     };
-
-    input Sanitize  = no;
-    input Oscillate = 0;
 
     input Period = {
         default "Chart",
@@ -177,8 +175,19 @@ declare real_size;
 
     @Date input SinceDate = 20221010;
     input CandlesAgo      = 100;
+    input Oscillate       = 0;
+    input Sanitize        = no;
     input Separators      = yes;
     input Connectors      = no;
+
+    input Aggregate = {
+        default "Auto",
+        "Daily",
+        "Weekly",
+        "Monthly",
+        "Quarterly",
+        "Yearly"
+    };
 ###
 
 
@@ -191,14 +200,39 @@ declare real_size;
         case "HL2"   : type = FundamentalType.HL2;
         case "HLC3"  : type = FundamentalType.HLC3;
         case "OHLC4" : type = FundamentalType.OHLC4;
+        case "VWAP"  : type = FundamentalType.VWAP;
         default      : type = FundamentalType.CLOSE;
     }
 
-    def rawOpenOne = open(if TickerOne != "" then TickerOne else GetSymbol());
-    def rawOpenTwo = open(TickerTwo);
+    def agg;
+    switch (Aggregate) {
+        case "Daily"     : agg = AggregationPeriod.DAY;
+        case "Weekly"    : agg = AggregationPeriod.WEEK;
+        case "Monthly"   : agg = AggregationPeriod.MONTH;
+        case "Quarterly" : agg = AggregationPeriod.QUARTER;
+        case "Yearly"    : agg = AggregationPeriod.YEAR;
+        default          : agg = GetAggregationPeriod();
+    }
 
-    def rawOne = Fundamental(type, if TickerOne != "" then TickerOne else GetSymbol());
-    def rawTwo = Fundamental(type, TickerTwo);
+    def rawOpenOne = open(
+        symbol = if TickerOne != "" then TickerOne else GetSymbol(),
+        period = Max(agg, GetAggregationPeriod())
+    );
+    def rawOpenTwo = open(
+        symbol = TickerTwo,
+        period = Max(agg, GetAggregationPeriod())
+    );
+
+    def rawOne = Fundamental(
+        symbol = if TickerOne != "" then TickerOne else GetSymbol(),
+        period = Max(agg, GetAggregationPeriod()),
+        fundamentalType = type
+    );
+    def rawTwo = Fundamental(
+        symbol = TickerTwo,
+        period = Max(agg, GetAggregationPeriod()),
+        fundamentalType = type
+    );
 
     def dataOpenOne = if Sanitize
         then Value(rawOpenOne).value
@@ -221,43 +255,49 @@ declare real_size;
 ### CALCULATIONS ###
     def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
     def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
+    def timeframeError = agg > AggregationPeriod.DAY and (Quote == Quote.RTH or Quote == Quote.ETH);
+    def vwapError      = Quote == Quote.VWAP and (!IsNaN(rawOpenOne) and IsNaN(rawOne) or !IsNaN(rawOpenTwo) and IsNaN(rawTwo));
 
     # Delta
-    def changeOne;
-    def changeTwo;
+    def startOne;
+    def startTwo;
+    def endOne;
+    def endTwo;
+
     if Quote == Quote.ETH and Chart().isIntradayBar {
-        changeOne = changeOne[1];
-        changeTwo = changeTwo[1];
+        startOne = 1;
+        startTwo = 1;
+        endOne   = 1;
+        endTwo   = 1;
     }
     else if Quote == Quote.ETH {
-        if Values == Values.Relative {
-            changeOne = dataOpenOne / dataOne[1] - 1;
-            changeTwo = dataOpenTwo / dataTwo[1] - 1;
-        }
-        else {
-            changeOne = dataOpenOne - dataOne[1];
-            changeTwo = dataOpenTwo - dataTwo[1];
-        }
+        startOne = dataOne[1];
+        startTwo = dataTwo[1];
+        endOne   = dataOpenOne;
+        endTwo   = dataOpenTwo;
     }
     else if Quote == Quote.RTH and !Chart().isIntradayBar {
-        if Values == Values.Relative {
-            changeOne = dataOne / dataOpenOne - 1;
-            changeTwo = dataTwo / dataOpenTwo - 1;
-        }
-        else {
-            changeOne = dataOne - dataOpenOne;
-            changeTwo = dataTwo - dataOpenTwo;
-        }
+        startOne = dataOpenOne;
+        startTwo = dataOpenTwo;
+        endOne   = dataOne;
+        endTwo   = dataTwo;
     }
     else {
-        if Values == Values.Relative {
-            changeOne = dataOne / dataOne[1] - 1;
-            changeTwo = dataTwo / dataTwo[1] - 1;
-        }
-        else {
-            changeOne = dataOne - dataOne[1];
-            changeTwo = dataTwo - dataTwo[1];
-        }
+        startOne = dataOne[1];
+        startTwo = dataTwo[1];
+        endOne   = dataOne;
+        endTwo   = dataTwo;
+    }
+
+    def changeOne;
+    def changeTwo;
+    if Values == Values.Relative {
+        changeOne = endOne / startOne - 1;
+        changeTwo = endTwo / startTwo - 1;
+    }
+    else {
+        changeOne = endOne - startOne;
+        changeTwo = endTwo - startTwo;
     }
 
     # Oscillation
@@ -277,16 +317,20 @@ declare real_size;
         sumTwo = Double.NaN;
     }
     else if isNewPeriod {
-        sumOne = oscOne;
-        sumTwo = oscTwo;
+        sumOne = 0;
+        sumTwo = 0;
     }
     else if Quote == Quote.ETH and Chart().isIntradayBar {
         sumOne = sumOne[1];
         sumTwo = sumTwo[1];
     }
+    else if Values == Values.Relative {
+        sumOne = (sumOne[1] + 1) * (oscOne + 1) - 1;
+        sumTwo = (sumTwo[1] + 1) * (oscTwo + 1) - 1;
+    }
     else {
-        sumOne = oscOne + (if IsNaN(sumOne[1]) then 0 else sumOne[1]);
-        sumTwo = oscTwo + (if IsNaN(sumTwo[1]) then 0 else sumTwo[1]);
+        sumOne = sumOne[1] + oscOne;
+        sumTwo = sumTwo[1] + oscTwo;
     }
 
     def oscChange = oscOne - oscTwo;
@@ -301,7 +345,7 @@ declare real_size;
 
     # Cumulative
     plot Cumulation = sumChange;
-    Cumulation.SetHiding(Display != Display.Cumulative);
+    Cumulation.SetHiding(Display != Display.Cumulative or timeframeError);
     Cumulation.DefineColor("Up", Color.UPTICK);
     Cumulation.DefineColor("Down", Color.DOWNTICK);
     Cumulation.DefineColor("Neutral", Color.DARK_GRAY);
@@ -319,7 +363,7 @@ declare real_size;
 
     # Ratio
     plot Ratio = oscChange;
-    Ratio.SetHiding(Display != Display.Ratio);
+    Ratio.SetHiding(Display != Display.Ratio or timeframeError);
     Ratio.DefineColor("Up", Color.UPTICK);
     Ratio.DefineColor("Down", Color.DOWNTICK);
     Ratio.DefineColor("Neutral", Color.DARK_GRAY);
@@ -336,7 +380,7 @@ declare real_size;
 
     # Overlay One
     plot ValueOne = sumOne;
-    ValueOne.SetHiding(Display != Display.Overlay and Display != Display.Cloud);
+    ValueOne.SetHiding(Display != Display.Overlay and Display != Display.Cloud or timeframeError);
     ValueOne.DefineColor("Value", Color.UPTICK);
     ValueOne.SetDefaultColor(ValueOne.Color("Value"));
 
@@ -348,7 +392,7 @@ declare real_size;
 
     # Overlay Two
     plot valueTwo = sumTwo;
-    valueTwo.SetHiding(Display != Display.Overlay and Display != Display.Cloud);
+    valueTwo.SetHiding(Display != Display.Overlay and Display != Display.Cloud or timeframeError);
     valueTwo.DefineColor("Value", Color.DOWNTICK);
     valueTwo.SetDefaultColor(valueTwo.Color("Value"));
 
@@ -363,8 +407,8 @@ declare real_size;
     def cloudTwo = sumTwo;
 
     AddCloud(
-        data1  = if Display == Display.Cloud then cloudOne else Double.NaN,
-        data2  = if Display == Display.Cloud then cloudTwo else Double.NaN,
+        data1  = if Display == Display.Cloud and !timeframeError then cloudOne else Double.NaN,
+        data2  = if Display == Display.Cloud and !timeframeError then cloudTwo else Double.NaN,
         color1 = ValueOne.Color("Value"),
         color2 = ValueTwo.Color("Value")
     );
@@ -381,5 +425,17 @@ declare real_size;
         color   = GlobalColor("Separator"),
         stroke  = Curve.SHORT_DASH,
         text    = ""
+    );
+
+    # Errors
+    AddLabel(
+        text    = "BAD TIME FRAME FOR RTH/ETH",
+        visible = timeframeError,
+        color   = Color.DOWNTICK
+    );
+    AddLabel(
+        text    = "BAD SYMBOL FOR VWAP",
+        visible = vwapError,
+        color   = Color.DOWNTICK
     );
 ###

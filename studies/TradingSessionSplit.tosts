@@ -145,9 +145,6 @@ declare lower;
         "Absolute"
     };
 
-    input Sanitize  = no;
-    input Oscillate = 0;
-
     input Period = {
         default "Chart",
         "Daily",
@@ -163,6 +160,8 @@ declare lower;
 
     @Date input SinceDate = 20221010;
     input CandlesAgo      = 100;
+    input Oscillate       = 0;
+    input Sanitize        = no;
     input Separators      = yes;
     input Connectors      = no;
 ###
@@ -185,6 +184,7 @@ declare lower;
 ### CALCULATIONS ###
     def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
     def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
+    def timeframeError = GetAggregationPeriod() > AggregationPeriod.DAY;
 
     # Delta
     def changeRTH = if Values == Values.Relative
@@ -212,12 +212,21 @@ declare lower;
         sumETH = Double.NaN;
     }
     else if isNewPeriod {
-        sumRTH = oscRTH;
-        sumETH = oscETH;
+        sumRTH = 0;
+        sumETH = 0;
     }
     else if Chart().isIntradayBar {
-        sumRTH = sumRTH[1] + oscRTH;
+        if Values == Values.Relative {
+            sumRTH = (sumRTH[1] + 1) * (oscRTH + 1) - 1;
+        }
+        else {
+            sumRTH = sumRTH[1] + oscRTH;
+        }
         sumETH = sumETH[1];
+    }
+    else if Values == Values.Relative {
+        sumRTH = (sumRTH[1] + 1) * (oscRTH + 1) - 1;
+        sumETH = (sumETH[1] + 1) * (oscETH + 1) - 1;
     }
     else {
         sumRTH = sumRTH[1] + oscRTH;
@@ -236,7 +245,7 @@ declare lower;
 
     # Cumulative
     plot Cumulation = changeSum;
-    Cumulation.SetHiding(Display != Display.Cumulative);
+    Cumulation.SetHiding(Display != Display.Cumulative or timeframeError);
     Cumulation.DefineColor("Up", Color.UPTICK);
     Cumulation.DefineColor("Down", Color.DOWNTICK);
     Cumulation.DefineColor("Neutral", Color.DARK_GRAY);
@@ -254,7 +263,7 @@ declare lower;
 
     # Ratio
     plot Ratio = changeOsc;
-    Ratio.SetHiding(Display != Display.Ratio);
+    Ratio.SetHiding(Display != Display.Ratio or timeframeError);
     Ratio.DefineColor("Up", Color.UPTICK);
     Ratio.DefineColor("Down", Color.DOWNTICK);
     Ratio.DefineColor("Neutral", Color.DARK_GRAY);
@@ -271,7 +280,7 @@ declare lower;
 
     # ETH
     plot ETH = sumETH;
-    ETH.SetHiding(Display != Display.Overlay and Display != Display.Cloud);
+    ETH.SetHiding(Display != Display.Overlay and Display != Display.Cloud or timeframeError);
     ETH.DefineColor("Value", Color.UPTICK);
     ETH.SetDefaultColor(ETH.Color("Value"));
 
@@ -283,7 +292,7 @@ declare lower;
 
     # RTH
     plot RTH = sumRTH;
-    RTH.SetHiding(Display != Display.Overlay and Display != Display.Cloud);
+    RTH.SetHiding(Display != Display.Overlay and Display != Display.Cloud or timeframeError);
     RTH.DefineColor("Value", Color.DOWNTICK);
     RTH.SetDefaultColor(RTH.Color("Value"));
 
@@ -298,8 +307,8 @@ declare lower;
     def cloudETH = sumETH;
 
     AddCloud(
-        data1  = if Display == Display.Cloud then cloudRTH else Double.NaN,
-        data2  = if Display == Display.Cloud then cloudETH else Double.NaN,
+        data1  = if Display == Display.Cloud and !timeframeError then cloudRTH else Double.NaN,
+        data2  = if Display == Display.Cloud and !timeframeError then cloudETH else Double.NaN,
         color1 = ETH.Color("Value"),
         color2 = RTH.Color("Value")
     );
@@ -316,5 +325,12 @@ declare lower;
         color   = GlobalColor("Separator"),
         stroke  = Curve.SHORT_DASH,
         text    = ""
+    );
+
+    # Errors
+    AddLabel(
+        text    = "BAD TIME FRAME",
+        visible = timeframeError,
+        color   = Color.DOWNTICK
     );
 ###

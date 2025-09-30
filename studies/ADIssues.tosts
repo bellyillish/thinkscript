@@ -152,19 +152,16 @@ declare lower;
     };
 
     input Quote = {
-        default "Close",
         "Open",
         "High",
         "Low",
-        "RTH",
-        "ETH",
+        default "Close",
         "HL2",
         "HLC3",
-        "OHLC4"
+        "OHLC4",
+        "RTH",
+        "ETH"
     };
-
-    input Sanitize  = no;
-    input Oscillate = 0;
 
     input Period = {
         default "Chart",
@@ -181,6 +178,8 @@ declare lower;
 
     @Date input SinceDate = 20221010;
     input CandlesAgo      = 100;
+    input Oscillate       = 0;
+    input Sanitize        = no;
     input Separators      = yes;
     input Connectors      = no;
 ###
@@ -249,6 +248,7 @@ declare lower;
 ### CALCULATIONS ###
     def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
     def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
+    def timeframeError = agg > AggregationPeriod.DAY and (Quote == Quote.RTH or Quote == Quote.ETH);
 
     # Delta
     def change;
@@ -288,6 +288,9 @@ declare lower;
     }
     else if Quote == Quote.ETH and Chart().isIntradayBar {
         sumChange = sumChange[1];
+    }
+    else if Values == Values.Relative {
+        sumChange = (sumChange[1] + 1) * (oscChange + 1) - 1;
     }
     else {
         sumChange = sumChange[1] + oscChange;
