@@ -83,7 +83,7 @@ declare lower;
 
     script Periods {
         input period  = "Chart";
-        input since   = 20221010;
+        input since   = 20250407;
         input candles = 100;
 
         def isStart     = Chart().isStart;
@@ -190,25 +190,23 @@ declare lower;
     };
 
     input Quote = {
-        default "Close",
         "Open",
         "High",
         "Low",
+        default "Close",
         "HL2",
         "HLC3",
         "OHLC4",
         "VWAP"
     };
 
-    input Sanitize = no;
-
+    input Sanitize      = no;
     input CompareLength = 12;
     input CompareOffset = 0;
     input Threshold     = 0.8;
     input SpikeLength   = 5;
     input BarsAhead     = 8;
-
-    input Separators = yes;
+    input Separators    = yes;
 ###
 
 
@@ -225,11 +223,21 @@ declare lower;
         case "VWAP"  : type = FundamentalType.VWAP;
     }
 
-    def rawData = Fundamental(type, if Ticker != "" then Ticker else GetSymbol());
+    def rawData;
+    if Ticker != "" {
+        rawData = Fundamental(type, Ticker);
+    }
+    else {
+        rawData = Fundamental(type, GetSymbol());
+    }
 
-    def data = if Sanitize
-        then Value(rawData).data
-        else rawData;
+    def data;
+    if Sanitize {
+        data = Value(rawData).data;
+    }
+    else {
+        data = rawData;
+    }
 ###
 
 
@@ -265,9 +273,13 @@ declare lower;
         isSpike = no;
     }
 
-    def lastSpike = if isSpike
-        then BarNumber()
-        else lastSpike[1];
+    def lastSpike;
+    if isSpike {
+        lastSpike = BarNumber();
+    }
+    else {
+        lastSpike = lastSpike[1];
+    }
 
     def isBarAhead = lastSpike > 0 and BarNumber() <= lastSpike + BarsAhead;
 ###

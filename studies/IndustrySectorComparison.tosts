@@ -83,7 +83,7 @@ declare lower;
 
     script Periods {
         input period  = "Chart";
-        input since   = 20221010;
+        input since   = 20250407;
         input candles = 100;
 
         def isStart     = Chart().isStart;
@@ -130,7 +130,7 @@ declare lower;
 
     script LatestPeriod {
         input Period  = "Chart";
-        input Since   = 20221010;
+        input Since   = 20250407;
         input Candles = 100;
 
         def endBar    = Chart().endBar;
@@ -181,6 +181,11 @@ declare lower;
         "Overlay"
     };
 
+    input Values = {
+        default "Relative",
+        "Logarithmic"
+    };
+
     input Cap = {
         default "1500",
         "500EW",
@@ -196,10 +201,10 @@ declare lower;
     };
 
     input Quote = {
-        default "Close",
         "Open",
         "High",
         "Low",
+        default "Close",
         "HL2",
         "HLC3",
         "OHLC4"
@@ -218,7 +223,7 @@ declare lower;
         "SinceDate"
     };
 
-    @Date input SinceDate = 20221010;
+    @Date input SinceDate = 20250407;
     input CandlesAgo      = 100;
     input Separators      = yes;
     input Connectors      = no;
@@ -238,18 +243,31 @@ declare lower;
         default      : type = FundamentalType.CLOSE;
     }
 
-    def valueIndex = Fundamental(type, "$SP" + Cap);
-    def value10    = Fundamental(type, "$SP" + Cap + "#10");
-    def value15    = Fundamental(type, "$SP" + Cap + "#15");
-    def value20    = Fundamental(type, "$SP" + Cap + "#20");
-    def value25    = Fundamental(type, "$SP" + Cap + "#25");
-    def value30    = Fundamental(type, "$SP" + Cap + "#30");
-    def value35    = Fundamental(type, "$SP" + Cap + "#35");
-    def value40    = Fundamental(type, "$SP" + Cap + "#40");
-    def value45    = Fundamental(type, "$SP" + Cap + "#45");
-    def value50    = Fundamental(type, "$SP" + Cap + "#50");
-    def value55    = Fundamental(type, "$SP" + Cap + "#55");
-    def value60    = Fundamental(type, "$SP" + Cap + "#60");
+    def raw00 = Fundamental(type, "$SP" + Cap);
+    def raw10 = Fundamental(type, "$SP" + Cap + "#10");
+    def raw15 = Fundamental(type, "$SP" + Cap + "#15");
+    def raw20 = Fundamental(type, "$SP" + Cap + "#20");
+    def raw25 = Fundamental(type, "$SP" + Cap + "#25");
+    def raw30 = Fundamental(type, "$SP" + Cap + "#30");
+    def raw35 = Fundamental(type, "$SP" + Cap + "#35");
+    def raw40 = Fundamental(type, "$SP" + Cap + "#40");
+    def raw45 = Fundamental(type, "$SP" + Cap + "#45");
+    def raw50 = Fundamental(type, "$SP" + Cap + "#50");
+    def raw55 = Fundamental(type, "$SP" + Cap + "#55");
+    def raw60 = Fundamental(type, "$SP" + Cap + "#60");
+
+    def value00 = if Values == Values.Logarithmic then Log(raw00) else raw00;
+    def value10 = if Values == Values.Logarithmic then Log(raw10) else raw10;
+    def value15 = if Values == Values.Logarithmic then Log(raw15) else raw15;
+    def value20 = if Values == Values.Logarithmic then Log(raw20) else raw20;
+    def value25 = if Values == Values.Logarithmic then Log(raw25) else raw25;
+    def value30 = if Values == Values.Logarithmic then Log(raw30) else raw30;
+    def value35 = if Values == Values.Logarithmic then Log(raw35) else raw35;
+    def value40 = if Values == Values.Logarithmic then Log(raw40) else raw40;
+    def value45 = if Values == Values.Logarithmic then Log(raw45) else raw45;
+    def value50 = if Values == Values.Logarithmic then Log(raw50) else raw50;
+    def value55 = if Values == Values.Logarithmic then Log(raw55) else raw55;
+    def value60 = if Values == Values.Logarithmic then Log(raw60) else raw60;
 ###
 
 
@@ -258,14 +276,14 @@ declare lower;
     def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
     def isLatestPeriod = LatestPeriod(Period, SinceDate, CandlesAgo);
 
-    def startBar    = Chart().startBar;
+    def startBar   = Chart().startBar;
     def isStartBar = Chart().isStart;
     def isEndBar   = Chart().isEnd;
     def endOffset  = Chart().endOffset;
     def isValidBar = Chart().isValidBar;
 
-    def changeIndex;
-    def ratioOffset;
+    def change00;
+    def offset00;
     def change10;
     def change15;
     def change20;
@@ -279,55 +297,49 @@ declare lower;
     def change60;
 
     if !isValidBar or !isActivePeriod or EndPeriodOnly and !isLatestPeriod {
-        changeIndex = Double.NaN;
-        ratioOffset = Double.NaN;
-        change10    = Double.NaN;
-        change15    = Double.NaN;
-        change20    = Double.NaN;
-        change25    = Double.NaN;
-        change30    = Double.NaN;
-        change35    = Double.NaN;
-        change40    = Double.NaN;
-        change45    = Double.NaN;
-        change50    = Double.NaN;
-        change55    = Double.NaN;
-        change60    = Double.NaN;
+        change00 = Double.NaN;
+        offset00 = Double.NaN;
+        change10 = Double.NaN;
+        change15 = Double.NaN;
+        change20 = Double.NaN;
+        change25 = Double.NaN;
+        change30 = Double.NaN;
+        change35 = Double.NaN;
+        change40 = Double.NaN;
+        change45 = Double.NaN;
+        change50 = Double.NaN;
+        change55 = Double.NaN;
+        change60 = Double.NaN;
     }
     else if isNewPeriod {
-        ratioOffset = if Display == Display.Ratio
-            then valueIndex / valueIndex[1] - 1
-            else 0;
-
-        changeIndex = valueIndex / valueIndex[1] - ratioOffset - 1;
-        change10    = value10 / value10[1] - ratioOffset - 1;
-        change15    = value15 / value15[1] - ratioOffset - 1;
-        change20    = value20 / value20[1] - ratioOffset - 1;
-        change25    = value25 / value25[1] - ratioOffset - 1;
-        change30    = value30 / value30[1] - ratioOffset - 1;
-        change35    = value35 / value35[1] - ratioOffset - 1;
-        change40    = value40 / value40[1] - ratioOffset - 1;
-        change45    = value45 / value45[1] - ratioOffset - 1;
-        change50    = value50 / value50[1] - ratioOffset - 1;
-        change55    = value55 / value55[1] - ratioOffset - 1;
-        change60    = value60 / value60[1] - ratioOffset - 1;
+        offset00 = if Display == Display.Ratio then value00 / value00[1] - 1 else 0;
+        change00 = value00 / value00[1] - offset00 - 1;
+        change10 = value10 / value10[1] - offset00 - 1;
+        change15 = value15 / value15[1] - offset00 - 1;
+        change20 = value20 / value20[1] - offset00 - 1;
+        change25 = value25 / value25[1] - offset00 - 1;
+        change30 = value30 / value30[1] - offset00 - 1;
+        change35 = value35 / value35[1] - offset00 - 1;
+        change40 = value40 / value40[1] - offset00 - 1;
+        change45 = value45 / value45[1] - offset00 - 1;
+        change50 = value50 / value50[1] - offset00 - 1;
+        change55 = value55 / value55[1] - offset00 - 1;
+        change60 = value60 / value60[1] - offset00 - 1;
     }
     else {
-        ratioOffset = if Display == Display.Ratio
-            then valueIndex / valueIndex[1] - 1
-            else 0;
-
-        changeIndex = changeIndex[1] + valueIndex / valueIndex[1] - ratioOffset - 1;
-        change10    = change10[1] + value10 / value10[1] - ratioOffset - 1;
-        change15    = change15[1] + value15 / value15[1] - ratioOffset - 1;
-        change20    = change20[1] + value20 / value20[1] - ratioOffset - 1;
-        change25    = change25[1] + value25 / value25[1] - ratioOffset - 1;
-        change30    = change30[1] + value30 / value30[1] - ratioOffset - 1;
-        change35    = change35[1] + value35 / value35[1] - ratioOffset - 1;
-        change40    = change40[1] + value40 / value40[1] - ratioOffset - 1;
-        change45    = change45[1] + value45 / value45[1] - ratioOffset - 1;
-        change50    = change50[1] + value50 / value50[1] - ratioOffset - 1;
-        change55    = change55[1] + value55 / value55[1] - ratioOffset - 1;
-        change60    = change60[1] + value60 / value60[1] - ratioOffset - 1;
+        offset00 = if Display == Display.Ratio then value00 / value00[1] - 1 else 0;
+        change00 = (change00[1] + 1) * (value00 / value00[1] - offset00) - 1;
+        change10 = (change10[1] + 1) * (value10 / value10[1] - offset00) - 1;
+        change15 = (change15[1] + 1) * (value15 / value15[1] - offset00) - 1;
+        change20 = (change20[1] + 1) * (value20 / value20[1] - offset00) - 1;
+        change25 = (change25[1] + 1) * (value25 / value25[1] - offset00) - 1;
+        change30 = (change30[1] + 1) * (value30 / value30[1] - offset00) - 1;
+        change35 = (change35[1] + 1) * (value35 / value35[1] - offset00) - 1;
+        change40 = (change40[1] + 1) * (value40 / value40[1] - offset00) - 1;
+        change45 = (change45[1] + 1) * (value45 / value45[1] - offset00) - 1;
+        change50 = (change50[1] + 1) * (value50 / value50[1] - offset00) - 1;
+        change55 = (change55[1] + 1) * (value55 / value55[1] - offset00) - 1;
+        change60 = (change60[1] + 1) * (value60 / value60[1] - offset00) - 1;
     }
 ###
 
@@ -348,23 +360,23 @@ declare lower;
     DefineGlobalColor("C55",        CreateColor(251, 255, 128));
     DefineGlobalColor("C60",        CreateColor(102, 255, 229));
 
-    def hide10 = if isStartBar then Performance == Performance.Leading and GetValue(change10 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change10 > changeIndex, endOffset) else hide10[1];
-    def hide15 = if isStartBar then Performance == Performance.Leading and GetValue(change15 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change15 > changeIndex, endOffset) else hide15[1];
-    def hide20 = if isStartBar then Performance == Performance.Leading and GetValue(change20 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change20 > changeIndex, endOffset) else hide20[1];
-    def hide25 = if isStartBar then Performance == Performance.Leading and GetValue(change25 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change25 > changeIndex, endOffset) else hide25[1];
-    def hide30 = if isStartBar then Performance == Performance.Leading and GetValue(change30 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change30 > changeIndex, endOffset) else hide30[1];
-    def hide35 = if isStartBar then Performance == Performance.Leading and GetValue(change35 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change35 > changeIndex, endOffset) else hide35[1];
-    def hide40 = if isStartBar then Performance == Performance.Leading and GetValue(change40 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change40 > changeIndex, endOffset) else hide40[1];
-    def hide45 = if isStartBar then Performance == Performance.Leading and GetValue(change45 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change45 > changeIndex, endOffset) else hide45[1];
-    def hide50 = if isStartBar then Performance == Performance.Leading and GetValue(change50 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change50 > changeIndex, endOffset) else hide50[1];
-    def hide55 = if isStartBar then Performance == Performance.Leading and GetValue(change55 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change55 > changeIndex, endOffset) else hide55[1];
-    def hide60 = if isStartBar then Performance == Performance.Leading and GetValue(change60 < changeIndex, endOffset) or Performance == Performance.Lagging and GetValue(change60 > changeIndex, endOffset) else hide60[1];
+    def hide10 = if isStartBar then Performance == Performance.Leading and GetValue(change10 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change10 > change00, endOffset) else hide10[1];
+    def hide15 = if isStartBar then Performance == Performance.Leading and GetValue(change15 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change15 > change00, endOffset) else hide15[1];
+    def hide20 = if isStartBar then Performance == Performance.Leading and GetValue(change20 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change20 > change00, endOffset) else hide20[1];
+    def hide25 = if isStartBar then Performance == Performance.Leading and GetValue(change25 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change25 > change00, endOffset) else hide25[1];
+    def hide30 = if isStartBar then Performance == Performance.Leading and GetValue(change30 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change30 > change00, endOffset) else hide30[1];
+    def hide35 = if isStartBar then Performance == Performance.Leading and GetValue(change35 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change35 > change00, endOffset) else hide35[1];
+    def hide40 = if isStartBar then Performance == Performance.Leading and GetValue(change40 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change40 > change00, endOffset) else hide40[1];
+    def hide45 = if isStartBar then Performance == Performance.Leading and GetValue(change45 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change45 > change00, endOffset) else hide45[1];
+    def hide50 = if isStartBar then Performance == Performance.Leading and GetValue(change50 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change50 > change00, endOffset) else hide50[1];
+    def hide55 = if isStartBar then Performance == Performance.Leading and GetValue(change55 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change55 > change00, endOffset) else hide55[1];
+    def hide60 = if isStartBar then Performance == Performance.Leading and GetValue(change60 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change60 > change00, endOffset) else hide60[1];
 
     def connect     = !isNewPeriod or Connectors;
     def showBubbles = isActivePeriod and isNewPeriod[-1] or isEndBar;
 
     # SP
-    plot SP = changeIndex;
+    plot SP = change00;
     SP.SetHiding(Display != Display.Overlay);
     SP.SetDefaultColor(Color.WHITE);
     SP.SetLineWeight(3);
@@ -373,7 +385,7 @@ declare lower;
     AddChartBubble(showBubbles and Display == Display.Overlay, SP, "$SP" + Cap, Color.WHITE);
 
     # SP Outline
-    plot SPOutline = changeIndex;
+    plot SPOutline = change00;
     SPOutline.SetHiding(Display != Display.Overlay);
     SPOutline.SetDefaultColor(GlobalColor("Background"));
     SPOutline.SetLineWeight(5);
@@ -436,7 +448,7 @@ declare lower;
     AddChartBubble(showBubbles and !hide60, SP60, "Real Estate", GlobalColor("C60"));
 
     # Mid
-    plot Mid = changeIndex;
+    plot Mid = change00;
     Mid.SetHiding(Display != Display.Ratio);
     Mid.SetDefaultColor(GlobalColor("Line"));
     Mid.HideBubble();

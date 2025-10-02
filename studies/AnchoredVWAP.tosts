@@ -83,7 +83,7 @@ declare upper;
 
     script Periods {
         input period  = "Chart";
-        input since   = 20221010;
+        input since   = 20250407;
         input candles = 100;
 
         def isStart     = Chart().isStart;
@@ -132,17 +132,15 @@ declare upper;
 
 ### INPUTS ###
     input Anchor = {
-        default "VWAP",
-        "Close",
         "Open",
         "High",
         "Low",
+        "Close",
         "HL2",
         "HLC3",
-        "OHLC4"
+        "OHLC4",
+        default "VWAP"
     };
-
-    input Sanitize = no;
 
     input Period = {
         default "Chart",
@@ -157,8 +155,9 @@ declare upper;
         "SinceDate"
     };
 
-    @Date input SinceDate = 20221010;
+    @Date input SinceDate = 20250407;
     input CandlesAgo      = 100;
+    input Sanitize        = no;
     input Separators      = yes;
     input Connectors      = no;
 ###
@@ -177,9 +176,13 @@ declare upper;
         case "OHLC4" : type = FundamentalType.OHLC4;
     }
 
-    def data = if Sanitize
-        then Value(Fundamental(type)).value
-        else Fundamental(type);
+    def data;
+    if Sanitize {
+        data = Value(Fundamental(type)).value;
+    }
+    else {
+        data = Fundamental(type);
+    }
 ###
 
 

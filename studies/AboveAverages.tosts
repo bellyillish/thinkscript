@@ -83,7 +83,7 @@ declare lower;
 
     script Periods {
         input period  = "Chart";
-        input since   = 20221010;
+        input since   = 20250407;
         input candles = 100;
 
         def isStart     = Chart().isStart;
@@ -145,17 +145,14 @@ declare lower;
     };
 
     input Quote = {
-        default "Close",
         "Open",
         "High",
         "Low",
+        default "Close",
         "HL2",
         "HLC3",
         "OHLC4"
     };
-
-    input Sanitize  = no;
-    input Oscillate = 0;
 
     input Period = {
         default "Chart",
@@ -170,8 +167,10 @@ declare lower;
         "SinceDate"
     };
 
-    @Date input SinceDate = 20221010;
+    @Date input SinceDate = 20250407;
     input CandlesAgo      = 100;
+    input Oscillate       = 0;
+    input Sanitize        = no;
     input Separators      = yes;
     input Connectors      = no;
 ###
@@ -192,15 +191,18 @@ declare lower;
     def raw50  = Fundamental(type, "$SPXA50R");
     def raw200 = Fundamental(type, "$SPXA200R");
 
-    def data50 = if Sanitize
-        then Value(raw50).value
-        else raw50;
+    def dataAll = 500;
 
-    def data200 = if Sanitize
-        then Value(raw200).value
-        else raw200;
-
-    def dataTotal = 500;
+    def data50;
+    def data200;
+    if Sanitize {
+        data50  = Value(raw50).value  * dataAll;
+        data200 = Value(raw200).value * dataAll;
+    }
+    else {
+        data50  = raw50  * dataAll;
+        data200 = raw200 * dataAll;
+    }
 ###
 
 
@@ -208,33 +210,23 @@ declare lower;
     def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
     def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
 
-    # Relativized
-    def rel50 = if Values == Values.Relative
-        then data50
-        else data50 * dataTotal;
-
-    def rel200 = if Values == Values.Relative
-        then data200
-        else data200 * dataTotal;
-
-    def relTotal = if Values == Values.Relative
-        then 1
-        else dataTotal;
-
-    # Deltas
-    def change50  = rel50  - rel50[1];
-    def change200 = rel200 - rel200[1];
+    # Change
+    def change50  = data50  - data50[1];
+    def change200 = data200 - data200[1];
 
     # Oscillation
-    def osc50 = change50 - if Oscillate > 1
-        then Average(change50, Max(Oscillate, 1))
-        else 0;
+    def osc50;
+    def osc200;
+    if Oscillate > 1 {
+        osc50  = change50  - Average(change50, Oscillate);
+        osc200 = change200 - Average(change200, Oscillate);
+    }
+    else {
+        osc50  = change50;
+        osc200 = change200;
+    }
 
-    def osc200 = change200 - if Oscillate > 1
-        then Average(change200, Max(Oscillate, 1))
-        else 0;
-
-    #Cumulation
+    #Cumulative
     def sum50;
     def sum200;
     if !Chart().isValidBar or !isActivePeriod {
@@ -242,8 +234,8 @@ declare lower;
         sum200 = Double.NaN;
     }
     else if isNewPeriod and Period == Period.Chart {
-        sum50  = rel50;
-        sum200 = rel200;
+        sum50  = data50;
+        sum200 = data200;
     }
     else if isNewPeriod {
         sum50  = change50;
@@ -252,6 +244,27 @@ declare lower;
     else {
         sum50  = sum50[1]  + change50;
         sum200 = sum200[1] + change200;
+    }
+
+    # Relativized
+    def relAll;
+    def relOsc50;
+    def relOsc200;
+    def relSum50;
+    def relSum200;
+    if Values == Values.Relative {
+        relAll    = 1;
+        relOsc50  = osc50  / dataAll;
+        relOsc200 = osc200 / dataAll;
+        relSum50  = sum50  / dataAll;
+        relSum200 = sum200 / dataAll;
+    }
+    else {
+        relAll    = dataAll;
+        relOsc50  = osc50;
+        relOsc200 = osc200;
+        relSum50  = sum50;
+        relSum200 = sum200;
     }
 ###
 
@@ -262,7 +275,7 @@ declare lower;
     DefineGlobalColor("Background", CreateColor(12, 12, 12));
 
     # Cumulative 200
-    plot Above200 = sum200;
+    plot Above200 = relSum200;
     Above200.SetHiding(!ShowAbove200 or Display != Display.Cumulative);
     Above200.DefineColor("Up", Color.UPTICK);
     Above200.DefineColor("Down", Color.DOWNTICK);
@@ -272,15 +285,15 @@ declare lower;
     Above200.AssignValueColor(
         if !Connectors and isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
-        else if ShowAbove50 and ShowAbove200 or sum200 > 0
+        else if ShowAbove50 and ShowAbove200 or relSum200 > 0
             then Above200.Color("Up")
-        else if sum200 < 0
+        else if relSum200 < 0
             then Above200.Color("Down")
             else Above200.Color("Neutral")
     );
 
     # Ratio 200
-    plot Ratio200 = osc200;
+    plot Ratio200 = relOsc200;
     Ratio200.SetHiding(!ShowAbove200 or Display != Display.Ratio);
     Ratio200.DefineColor("Up", Color.UPTICK);
     Ratio200.DefineColor("Down", Color.DOWNTICK);
@@ -288,15 +301,15 @@ declare lower;
     Ratio200.SetDefaultColor(Ratio200.Color("Neutral"));
 
     Ratio200.AssignValueColor(
-        if ShowAbove50 and ShowAbove200 or osc200 > 0
+        if ShowAbove50 and ShowAbove200 or relOsc200 > 0
             then Ratio200.Color("Up")
-        else if osc200 < 0
+        else if relOsc200 < 0
             then Ratio200.Color("Down")
             else Ratio200.Color("Neutral")
     );
 
     # Cumulative 50
-    plot Above50 = sum50;
+    plot Above50 = relSum50;
     Above50.SetHiding(!ShowAbove50 or Display != Display.Cumulative);
     Above50.DefineColor("Up", Color.UPTICK);
     Above50.DefineColor("Down", Color.DOWNTICK);
@@ -306,15 +319,15 @@ declare lower;
     Above50.AssignValueColor(
         if !Connectors and isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
-        else if ShowAbove50 and ShowAbove200 or sum50 < 0
+        else if ShowAbove50 and ShowAbove200 or relSum50 < 0
             then Above50.Color("Down")
-        else if sum50 > 0
+        else if relSum50 > 0
             then Above50.Color("Up")
             else Above50.Color("Neutral")
     );
 
     # Ratio 50
-    plot Ratio50 = osc50;
+    plot Ratio50 = relOsc50;
     Ratio50.SetHiding(!ShowAbove50 or Display != Display.Ratio);
     Ratio50.DefineColor("Up", Color.UPTICK);
     Ratio50.DefineColor("Down", Color.DOWNTICK);
@@ -322,15 +335,15 @@ declare lower;
     Ratio50.SetDefaultColor(Ratio50.Color("Neutral"));
 
     Ratio50.AssignValueColor(
-        if ShowAbove50 and ShowAbove200 or osc50 < 0
+        if ShowAbove50 and ShowAbove200 or relOsc50 < 0
             then Ratio50.Color("Down")
-        else if osc50 > 0
+        else if relOsc50 > 0
             then Ratio50.Color("Up")
             else Ratio50.Color("Neutral")
     );
 
     # Mid
-    plot Mid = if Values == Values.Relative then 0.5 else dataTotal / 2;
+    plot Mid = relAll / 2;
     Mid.SetDefaultColor(GlobalColor("Line"));
     Mid.HideBubble();
     Mid.HideTitle();

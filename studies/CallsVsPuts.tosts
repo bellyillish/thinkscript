@@ -83,7 +83,7 @@ declare lower;
 
     script Periods {
         input period  = "Chart";
-        input since   = 20221010;
+        input since   = 20250407;
         input candles = 100;
 
         def isStart     = Chart().isStart;
@@ -156,21 +156,16 @@ declare lower;
         "Relative"
     };
 
-    input Smoothing = 100;
-
     input Quote = {
-        default "Close",
         "Open",
         "High",
         "Low",
+        default "Close",
         "HL2",
         "HLC3",
         "OHLC4",
         "VWAP"
     };
-
-    input Sanitize  = no;
-    input Oscillate = 0;
 
     input Period = {
         default "Chart",
@@ -185,8 +180,10 @@ declare lower;
         "SinceDate"
     };
 
-    @Date input SinceDate = 20221010;
+    @Date input SinceDate = 20250407;
     input CandlesAgo      = 100;
+    input Oscillate       = 0;
+    input Sanitize        = no;
     input Separators      = yes;
     input Connectors      = no;
 ###
@@ -219,51 +216,54 @@ declare lower;
         case "DJIA"          : dataDate = 20160101;
     }
 
-    def rawVolume;
+    def rawAll;
     def rawRatio;
     switch (Market) {
         case "ALLUSA":
-            rawVolume = volume("$PCALL");
+            rawAll   = volume("$PCALL");
             rawRatio = Fundamental(type, "$PCALL");
         case "CBOE Total":
-            rawVolume = volume("$CPC");
+            rawAll   = volume("$CPC");
             rawRatio = Fundamental(type, "$CPC");
         case "CBOE Index":
-            rawVolume = volume("$CPCI");
+            rawAll   = volume("$CPCI");
             rawRatio = Fundamental(type, "$CPCI");
         case "CBOE Equities":
-            rawVolume = volume("$CPCE");
+            rawAll   = volume("$CPCE");
             rawRatio = Fundamental(type, "$CPCE");
         case "NYSE":
-            rawVolume = volume("$PCN");
+            rawAll   = volume("$PCN");
             rawRatio = Fundamental(type, "$PCN");
         case "NASDAQ":
-            rawVolume = volume("$PCN/Q");
+            rawAll   = volume("$PCN/Q");
             rawRatio = Fundamental(type, "$PCN/Q");
         case "S&P 500":
-            rawVolume = volume("$PCSP");
+            rawAll   = volume("$PCSP");
             rawRatio = Fundamental(type, "$PCSP");
         case "NASDAQ 100":
-            rawVolume = volume("$PCND");
+            rawAll   = volume("$PCND");
             rawRatio = Fundamental(type, "$PCND");
         case "RUSSELL 2000":
-            rawVolume = volume("$PCRL");
+            rawAll   = volume("$PCRL");
             rawRatio = Fundamental(type, "$PCRL");
         case "DJIA":
-            rawVolume = volume("$PCI");
+            rawAll   = volume("$PCI");
             rawRatio = Fundamental(type, "$PCI");
     };
 
-    def dataVolume = if Sanitize
-        then Value(rawVolume).value
-        else rawVolume;
+    def dataRatio;
+    def dataAll;
+    if Sanitize {
+        dataRatio = Value(rawRatio).value;
+        dataAll   = Value(rawAll).value;
+    }
+    else {
+        dataRatio = rawRatio;
+        dataAll   = rawAll;
+    }
 
-    def dataRatio = if Sanitize
-        then Value(rawRatio).value
-        else rawRatio;
-
-    def dataCalls = dataVolume / (dataRatio + 1);
-    def dataPuts  = dataVolume - dataCalls;
+    def dataCalls = dataAll / (dataRatio + 1);
+    def dataPuts  = dataAll - dataCalls;
 ###
 
 
@@ -271,56 +271,78 @@ declare lower;
     def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
     def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
 
-    # Relativized
-    def avgVolume = Average(dataVolume, Max(Smoothing, 1));
-
-    def relVolume = if Values == Values.Relative
-        then dataVolume / avgVolume
-        else dataVolume;
-
-    def relCalls = if Values == Values.Relative
-        then dataCalls / avgVolume
-        else dataCalls;
-
-    def relPuts = if Values == Values.Relative
-        then dataPuts / avgVolume
-        else dataPuts;
-
-    # Deltas
-    def changeCalls = if Chart().isIntradayBar
-        then relCalls - relCalls[1]
-        else relCalls;
-
-    def changePuts = if Chart().isIntradayBar
-        then relPuts - relPuts[1]
-        else relPuts;
-
-    def changeVolume = if Chart().isIntradayBar
-        then relVolume - relVolume[1]
-        else relVolume;
+    # Intraday
+    def changeCalls;
+    def changePuts;
+    def changeAll;
+    if Chart().isIntradayBar {
+        changeCalls = dataCalls - dataCalls[1];
+        changePuts  = dataPuts  - dataPuts[1];
+        changeAll   = dataAll   - dataAll[1];
+    }
+    else {
+        changeCalls = dataCalls;
+        changePuts  = dataPuts;
+        changeAll   = dataAll;
+    }
 
     def change = changeCalls - changePuts;
 
-    # Oscillation
-    def oscChange = change - if Oscillate > 1
-        then Average(change, Max(Oscillate, 1))
-        else 0;
-
-    # Corrections
-    def fixedVolume = Max(0, changeVolume);
-    def fixedCalls  = Max(0, dataCalls / dataVolume * changeVolume);
-    def fixedPuts   = Max(0, dataPuts  / dataVolume * changeVolume);
-
-    # Cumulation
-    def sumChange;
-    if !Chart().isValidBar or !isActivePeriod {
-        sumChange = Double.NaN;
-    }
-    else if isNewPeriod {
-        sumChange = oscChange;
+    # Oscillate
+    def oscRatio;
+    if Oscillate > 1 {
+        oscRatio = change - Average(change, Oscillate);
     }
     else {
-        sumChange = sumChange[1] + oscChange;
+        oscRatio = change;
+    }
+
+    # Cumulation
+    def sumRatio;
+    if !Chart().isValidBar or !isActivePeriod {
+        sumRatio = Double.NaN;
+    }
+    else if isNewPeriod {
+        sumRatio = oscRatio;
+    }
+    else {
+        sumRatio = sumRatio[1] + oscRatio;
+    }
+
+    # Overlay/Stack Smoothing
+    def smoothCalls;
+    def smoothPuts;
+    def smoothAll;
+    if Chart().isIntradayBar {
+        smoothAll   = Max(0, changeAll);
+        smoothCalls = Round(smoothAll * dataCalls / dataAll);
+        smoothPuts  = smoothAll - smoothCalls;
+    }
+    else {
+        smoothAll   = changeAll;
+        smoothCalls = changeCalls;
+        smoothPuts  = changePuts;
+    }
+
+    # Relative
+    def relCalls;
+    def relPuts;
+    def relAll;
+    def relSum;
+    def relOsc;
+    if Values == Values.Relative {
+        relOsc   = oscRatio    / changeAll;
+        relSum   = sumRatio    / First(changeAll);
+        relCalls = smoothCalls / First(changeAll);
+        relPuts  = smoothPuts  / First(changeAll);
+        relAll   = smoothAll   / First(changeAll);
+    }
+    else {
+        relOsc   = oscRatio;
+        relSum   = sumRatio;
+        relCalls = smoothCalls;
+        relPuts  = smoothPuts;
+        relAll   = smoothAll;
     }
 ###
 
@@ -331,7 +353,7 @@ declare lower;
     DefineGlobalColor("Background", CreateColor(12, 12, 12));
 
     # Cumulative
-    plot Cumulation = sumChange;
+    plot Cumulation = relSum;
     Cumulation.SetHiding(Display != Display.Cumulative);
     Cumulation.DefineColor("Up", Color.UPTICK);
     Cumulation.DefineColor("Down", Color.DOWNTICK);
@@ -341,15 +363,15 @@ declare lower;
     Cumulation.AssignValueColor(
         if !Connectors and isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
-        else if sumChange > 0
+        else if relSum > 0
             then Cumulation.Color("Up")
-        else if sumChange < 0
+        else if relSum < 0
             then Cumulation.Color("Down")
             else Cumulation.Color("Neutral")
     );
 
     # Ratio
-    plot Ratio = oscChange;
+    plot Ratio = relOsc;
     Ratio.SetHiding(Display != Display.Ratio);
     Ratio.DefineColor("Up", Color.UPTICK);
     Ratio.DefineColor("Down", Color.DOWNTICK);
@@ -357,15 +379,15 @@ declare lower;
     Ratio.SetDefaultColor(Ratio.Color("Neutral"));
 
     Ratio.AssignValueColor(
-        if oscChange > 0
+        if relOsc > 0
             then Ratio.Color("Up")
-        else if oscChange < 0
+        else if relOsc < 0
             then Ratio.Color("Down")
             else Ratio.Color("Neutral")
     );
 
     # Separator
-    plot Separator = fixedPuts;
+    plot Separator = relPuts;
     Separator.SetHiding(Display != Display.Overlay);
     Separator.SetPaintingStrategy(PaintingStrategy.DASHES);
     Separator.SetDefaultColor(GlobalColor("Background"));
@@ -373,7 +395,7 @@ declare lower;
     Separator.HideTitle();
 
     # Puts
-    plot Puts = if Display == Display.Stack then -fixedPuts else fixedPuts;
+    plot Puts = if Display == Display.Stack then -relPuts else relPuts;
     Puts.SetHiding(Display != Display.Overlay and Display != Display.Stack);
     Puts.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
     Puts.DefineColor("Up", Color.UPTICK);
@@ -382,13 +404,13 @@ declare lower;
     Puts.SetDefaultColor(Puts.Color("Down"));
 
     Puts.AssignValueColor(
-        if Display == Display.Overlay or fixedPuts > fixedCalls
+        if Display == Display.Overlay or smoothPuts > smoothCalls
             then Puts.Color("Down")
             else Puts.Color("Neutral")
     );
 
     # Calls
-    plot Calls = fixedCalls;
+    plot Calls = relCalls;
     Calls.SetHiding(Display != Display.Stack);
     Calls.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
     Calls.DefineColor("Up", Color.UPTICK);
@@ -397,13 +419,13 @@ declare lower;
     Calls.SetDefaultColor(Calls.Color("Up"));
 
     Calls.AssignValueColor(
-        if Display == Display.Overlay or fixedCalls > fixedPuts
+        if Display == Display.Overlay or relCalls > relPuts
             then Calls.Color("Up")
             else Calls.Color("Neutral")
     );
 
     # Total
-    plot Total = fixedVolume;
+    plot Total = relAll;
     Total.SetHiding(Display != Display.Overlay);
     Total.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
     Total.DefineColor("Up", Color.UPTICK);
