@@ -83,7 +83,7 @@ declare lower;
 
     script Periods {
         input period  = "Chart";
-        input since   = 20221010;
+        input since   = 20250407;
         input candles = 100;
 
         def isStart     = Chart().isStart;
@@ -152,19 +152,16 @@ declare lower;
     };
 
     input Quote = {
-        default "Close",
         "Open",
         "High",
         "Low",
+        default "Close",
         "RTH",
         "ETH",
         "HL2",
         "HLC3",
         "OHLC4"
     };
-
-    input Sanitize  = no;
-    input Oscillate = 0;
 
     input Period = {
         default "Chart",
@@ -179,8 +176,10 @@ declare lower;
         "SinceDate"
     };
 
-    @Date input SinceDate = 20221010;
+    @Date input SinceDate = 20250407;
     input CandlesAgo      = 100;
+    input Oscillate       = 0;
+    input Sanitize        = no;
     input Separators      = yes;
     input Connectors      = no;
 ###
@@ -198,6 +197,8 @@ declare lower;
         default      : type = FundamentalType.CLOSE;
     }
 
+    def totalPeriod = Max(GetAggregationPeriod(), AggregationPeriod.DAY);
+
     def rawOpen;
     def rawRatio;
     def rawTotal;
@@ -205,44 +206,47 @@ declare lower;
         case "ALLUSA":
             rawOpen  = open("$TIKUS");
             rawRatio = Fundamental(type, "$TIKUS");
-            rawTotal = close("$ADVUS + $DECLUS + $UNCHUS");
+            rawTotal = close("$ADVUS + $DECLUS + $UNCHUS", totalPeriod);
         case "NYSE":
             rawOpen  = open("$TICK");
             rawRatio = Fundamental(type, "$TICK");
-            rawTotal = close("$ADVN + $DECN + $UNCN");
+            rawTotal = close("$ADVN + $DECN + $UNCN", totalPeriod);
         case "NASDAQ":
             rawOpen  = open("$TICK/Q");
             rawRatio = Fundamental(type, "$TICK/Q");
-            rawTotal = close("$ADVN/Q + $DECN/Q + $UNCN/Q");
+            rawTotal = close("$ADVN/Q + $DECN/Q + $UNCN/Q", totalPeriod);
         case "S&P 500":
             rawOpen  = open("$TIKSP");
             rawRatio = Fundamental(type, "$TIKSP");
-            rawTotal = close("$ADVSP + $DECLSP + $UNCHSP");
+            rawTotal = close("$ADVSP + $DECLSP + $UNCHSP", totalPeriod);
         case "NASDAQ 100":
             rawOpen  = open("$TIKND");
             rawRatio = Fundamental(type, "$TIKND");
-            rawTotal = close("$ADVND + $DECLND + $UNCHND");
+            rawTotal = close("$ADVND + $DECLND + $UNCHND", totalPeriod);
         case "RUSSELL 2000":
             rawOpen  = open("$TIKRL");
             rawRatio = Fundamental(type, "$TIKRL");
-            rawTotal = close("$ADVRL + $DECLRL + $UNCHRL");
+            rawTotal = close("$ADVRL + $DECLRL + $UNCHRL", totalPeriod);
         case "DJIA":
             rawOpen  = open("$TIKI");
             rawRatio = Fundamental(type, "$TIKI");
-            rawTotal = close("$ADVI + $DECLI + $UNCHI");
+            rawTotal = close("$ADVI + $DECLI + $UNCHI", totalPeriod);
     }
 
-    def dataOpen = if Sanitize
-        then Value(rawOpen).value
-        else rawOpen;
-
-    def dataRatio = if Sanitize
-        then Value(rawRatio).value
-        else rawRatio;
-
-    def dataTotal = if Sanitize
-        then Value(rawTotal).value
-        else rawTotal;
+    # Sanitize
+    def dataOpen;
+    def dataRatio;
+    def dataTotal;
+    if Sanitize {
+        dataOpen  = Value(rawOpen).value;
+        dataRatio = Value(rawRatio).value;
+        dataTotal = Value(rawTotal).value;
+    }
+    else {
+        dataOpen  = rawOpen;
+        dataRatio = rawRatio;
+        dataTotal = rawTotal;
+    }
 ###
 
 
@@ -265,30 +269,32 @@ declare lower;
         change = dataRatio;
     }
 
-    #Relativization
-    def relChange = if Values == Values.Relative
-        then change / dataTotal
-        else change;
-
-    # Oscillation
-    def oscChange = relChange - if Oscillate > 1
-        then Average(relChange, Max(Oscillate, 1))
-        else 0;
-
-    # Cumulation
-    def sumChange;
-    if !Chart().isValidBar or !isActivePeriod {
-        sumChange = Double.NaN;
-    }
-    else if isNewPeriod {
-        sumChange = oscChange;
-    }
-    else if Quote == Quote.ETH and Chart().isIntradayBar {
-        sumChange = sumChange[1];
+    # Oscillate
+    def osc;
+    if Oscillate > 1 {
+        osc = change - Average(change, Oscillate);
     }
     else {
-        sumChange = sumChange[1] + oscChange;
+        osc = change;
     }
+
+    # Cumulation
+    def total;
+    if !Chart().isValidBar or !isActivePeriod {
+        total = Double.NaN;
+    }
+    else if isNewPeriod {
+        total = osc;
+    }
+    else if Quote == Quote.ETH and Chart().isIntradayBar {
+        total = total[1];
+    }
+    else {
+        total = total[1] + osc;
+    }
+
+    def relTotal  = if Values == Values.Relative then total / dataTotal else total;
+    def relChange = if Values == Values.Relative then osc   / dataTotal else osc;
 ###
 
 
@@ -298,7 +304,7 @@ declare lower;
     DefineGlobalColor("Background", CreateColor(12, 12, 12));
 
     # Cumulative
-    plot Cumulation = sumChange;
+    plot Cumulation = relTotal;
     Cumulation.SetHiding(Display != Display.Cumulative);
     Cumulation.DefineColor("Up", Color.UPTICK);
     Cumulation.DefineColor("Down", Color.DOWNTICK);
@@ -308,15 +314,15 @@ declare lower;
     Cumulation.AssignValueColor(
         if !Connectors and isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
-        else if sumChange > 0
+        else if relTotal > 0
             then Cumulation.Color("Up")
-        else if sumChange < 0
+        else if relTotal < 0
             then Cumulation.Color("Down")
             else Cumulation.Color("Neutral")
     );
 
     # Ratio
-    plot Ratio = oscChange;
+    plot Ratio = relChange;
     Ratio.SetHiding(Display == Display.Cumulative);
     Ratio.DefineColor("Up", Color.UPTICK);
     Ratio.DefineColor("Down", Color.DOWNTICK);
@@ -325,9 +331,9 @@ declare lower;
     Ratio.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
 
     Ratio.AssignValueColor(
-        if oscChange > 0
+        if relChange > 0
             then Ratio.Color("Up")
-        else if oscChange < 0
+        else if relChange < 0
             then Ratio.Color("Down")
             else Ratio.Color("Neutral")
     );

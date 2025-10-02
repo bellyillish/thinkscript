@@ -83,7 +83,7 @@ declare lower;
 
     script Periods {
         input period  = "Chart";
-        input since   = 20221010;
+        input since   = 20250407;
         input candles = 100;
 
         def isStart     = Chart().isStart;
@@ -160,20 +160,15 @@ declare lower;
         "Absolute"
     };
 
-    input Smoothing = 100;
-
     input Quote = {
-        default "Close",
         "Open",
         "High",
         "Low",
+        default "Close",
         "HL2",
         "HLC3",
         "OHLC4"
     };
-
-    input Sanitize  = no;
-    input Oscillate = 0;
 
     input Period = {
         default "Chart",
@@ -188,8 +183,10 @@ declare lower;
         "SinceDate"
     };
 
-    @Date input SinceDate = 20221010;
+    @Date input SinceDate = 20250407;
     input CandlesAgo      = 100;
+    input Oscillate       = 0;
+    input Sanitize        = no;
     input Separators      = yes;
     input Connectors      = no;
 ###
@@ -317,15 +314,18 @@ declare lower;
             }
     }
 
-    def dataLows = if Sanitize
-        then Value(rawLows).value
-        else rawLows;
+    def dataLows;
+    def dataHighs;
+    if Sanitize {
+        dataLows  = Value(rawLows).value;
+        dataHighs = Value(rawHighs).value;
+    }
+    else {
+        dataLows  = rawLows;
+        dataHighs = rawHighs;
+    }
 
-    def dataHighs = if Sanitize
-        then Value(rawHighs).value
-        else rawHighs;
-
-    def dataTotal = dataLows + dataHighs;
+    def dataAll = dataLows + dataHighs;
 ###
 
 
@@ -333,67 +333,89 @@ declare lower;
     def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
     def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
 
-    # Relativized
-    def avgTotal = Average(dataTotal, Max(Smoothing, 1));
-
-    def relTotal = if Values == Values.Relative
-        then dataTotal / avgTotal
-        else dataTotal;
-
-    def relHighs = if Values == Values.Relative
-        then dataHighs / avgTotal
-        else dataHighs;
-
-    def relLows = if Values == Values.Relative
-        then dataLows / avgTotal
-        else dataLows;
-
     # Deltas
-    def changeHighs = if Chart().isIntradayBar
-        then relHighs - relHighs[1]
-        else relHighs;
-
-    def changeLows = if Chart().isIntradayBar
-        then relLows - relLows[1]
-        else relLows;
-
-    def changeTotal = if Chart().isIntradayBar
-        then relTotal - relTotal[1]
-        else relTotal;
+    def changeLows;
+    def changeHighs;
+    def changeAll;
+    if Chart().isIntradayBar {
+        changeLows  = dataLows  - dataLows[1];
+        changeHighs = dataHighs - dataHighs[1];
+        changeAll   = dataAll   - dataAll[1];
+    }
+    else {
+        changeLows  = dataLows;
+        changeHighs = dataHighs;
+        changeAll   = dataAll;
+    }
 
     def change = changeHighs - changeLows;
 
-    # Oscillation
-    def oscChange = change - if Oscillate > 1
-        then Average(change, Max(Oscillate, 1))
-        else 0;
-
-    # Corrections
-    def fixedTotal = Max(0, changeTotal);
-    def fixedHighs = Max(0, dataHighs / dataTotal * changeTotal);
-    def fixedLows  = Max(0, dataLows  / dataTotal * changeTotal);
-
-    # Cumulation
-    def sumChange;
-    if !Chart().isValidBar or !isActivePeriod {
-        sumChange = Double.NaN;
-    }
-    else if isNewPeriod {
-        sumChange = oscChange;
+    # Oscillate
+    def oscRatio;
+    if Oscillate > 1 {
+        oscRatio = change - Average(change, Oscillate);
     }
     else {
-        sumChange = sumChange[1] + oscChange;
+        oscRatio = change;
+    }
+
+    # Cumulative
+    def sumRatio;
+    if !Chart().isValidBar or !isActivePeriod {
+        sumRatio = Double.NaN;
+    }
+    else if isNewPeriod {
+        sumRatio = oscRatio;
+    }
+    else {
+        sumRatio = sumRatio[1] + oscRatio;
+    }
+
+    # Overlay/Stack Smoothing
+    def smoothHighs;
+    def smoothLows;
+    def smoothAll;
+    if Chart().isIntradayBar {
+        smoothAll   = Max(0, changeAll);
+        smoothHighs = Round(smoothAll * dataHighs / dataAll);
+        smoothLows  = smoothAll - smoothHighs;
+    }
+    else {
+        smoothAll   = changeAll;
+        smoothHighs = changeHighs;
+        smoothLows  = changeLows;
+    }
+
+    # Relative
+    def relHighs;
+    def relLows;
+    def relAll;
+    def relSum;
+    def relOsc;
+    if Values == Values.Relative {
+        relOsc   = oscRatio    / changeAll;
+        relSum   = sumRatio    / First(changeAll);
+        relHighs = smoothHighs / First(changeAll);
+        relLows  = smoothLows  / First(changeAll);
+        relAll   = smoothAll   / First(changeAll);
+    }
+    else {
+        relOsc   = oscRatio;
+        relSum   = sumRatio;
+        relHighs = smoothHighs;
+        relLows  = smoothLows;
+        relAll   = smoothAll;
     }
 ###
 
 
-### Plots
+### PLOTS ###
     DefineGlobalColor("Line",       CreateColor(48, 48, 48));
     DefineGlobalColor("Separator",  CreateColor(32, 32, 32));
     DefineGlobalColor("Background", CreateColor(12, 12, 12));
 
     # Cumulative
-    plot Cumulation = sumChange;
+    plot Cumulation = relSum;
     Cumulation.SetHiding(Display != Display.Cumulative);
     Cumulation.DefineColor("Up", Color.UPTICK);
     Cumulation.DefineColor("Down", Color.DOWNTICK);
@@ -403,15 +425,15 @@ declare lower;
     Cumulation.AssignValueColor(
         if !Connectors and isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
-        else if sumChange > 0
+        else if relSum > 0
             then Cumulation.Color("Up")
-        else if sumChange < 0
+        else if relSum < 0
             then Cumulation.Color("Down")
             else Cumulation.Color("Neutral")
     );
 
     # Ratio
-    plot Ratio = oscChange;
+    plot Ratio = relOsc;
     Ratio.SetHiding(Display != Display.Ratio);
     Ratio.DefineColor("Up", Color.UPTICK);
     Ratio.DefineColor("Down", Color.DOWNTICK);
@@ -419,15 +441,15 @@ declare lower;
     Ratio.SetDefaultColor(Ratio.Color("Neutral"));
 
     Ratio.AssignValueColor(
-        if oscChange > 0
+        if relOsc > 0
             then Ratio.Color("Up")
-        else if oscChange < 0
+        else if relOsc < 0
             then Ratio.Color("Down")
             else Ratio.Color("Neutral")
     );
 
     # Separator
-    plot Separator = fixedLows;
+    plot Separator = relLows;
     Separator.SetHiding(Display != Display.Overlay);
     Separator.SetPaintingStrategy(PaintingStrategy.DASHES);
     Separator.SetDefaultColor(GlobalColor("Background"));
@@ -435,7 +457,7 @@ declare lower;
     Separator.HideTitle();
 
     # Lows
-    plot NewLows = if Display == Display.Stack then -fixedLows else fixedLows;
+    plot NewLows = if Display == Display.Stack then -relLows else relLows;
     NewLows.SetHiding(Display != Display.Overlay and Display != Display.Stack);
     NewLows.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
     NewLows.DefineColor("Up", Color.UPTICK);
@@ -444,13 +466,13 @@ declare lower;
     NewLows.SetDefaultColor(NewLows.Color("Down"));
 
     NewLows.AssignValueColor(
-        if Display == Display.Overlay or fixedLows > fixedHighs
+        if Display == Display.Overlay or relLows > relHighs
             then NewLows.Color("Down")
             else NewLows.Color("Neutral")
     );
 
     # Highs
-    plot NewHighs = fixedHighs;
+    plot NewHighs = relHighs;
     NewHighs.SetHiding(Display != Display.Stack);
     NewHighs.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
     NewHighs.DefineColor("Up", Color.UPTICK);
@@ -459,13 +481,13 @@ declare lower;
     NewHighs.SetDefaultColor(NewHighs.Color("Up"));
 
     NewHighs.AssignValueColor(
-        if Display == Display.Overlay or fixedHighs > fixedLows
+        if Display == Display.Overlay or relHighs > relLows
             then NewHighs.Color("Up")
             else NewHighs.Color("Neutral")
     );
 
     # Total
-    plot Total = fixedTotal;
+    plot Total = relAll;
     Total.SetHiding(Display != Display.Overlay);
     Total.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
     Total.DefineColor("Up", Color.UPTICK);

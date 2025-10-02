@@ -83,7 +83,7 @@ declare upper;
 
     script Periods {
         input period  = "Chart";
-        input since   = 20221010;
+        input since   = 20250407;
         input candles = 100;
 
         def isStart     = Chart().isStart;
@@ -130,7 +130,7 @@ declare upper;
 
     script LatestPeriod {
         input Period  = "Chart";
-        input Since   = 20221010;
+        input Since   = 20250407;
         input Candles = 100;
 
         def endBar    = Chart().endBar;
@@ -200,7 +200,7 @@ declare upper;
         "SinceDate"
     };
 
-    @Date input SinceDate = 20221010;
+    @Date input SinceDate = 20250407;
     input CandlesAgo      = 100;
     input Separators      = no;
 ###

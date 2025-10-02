@@ -25,7 +25,7 @@ declare upper;
 ###
 
 
-### INOPUTS ###
+### INPUTS ###
     input Show12  = yes;
     input Show21  = yes;
     input Show50  = yes;

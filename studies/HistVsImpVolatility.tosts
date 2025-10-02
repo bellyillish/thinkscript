@@ -1,0 +1,21 @@
+declare lower;
+
+
+### INPUTS ###
+    input Length = 20;
+###
+
+
+### CALCULATIONS ###
+    def vi = imp_volatility();
+    def vh = HistoricalVolatility(Length);
+###
+
+
+### PLOTS ###
+    plot Imp = vi;
+    Imp.SetDefaultColor(CreateColor(58, 157, 155));
+
+    plot Hist = vh;
+    Hist.SetDefaultColor(CreateColor(201, 125, 76));
+###
