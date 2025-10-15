@@ -3,10 +3,8 @@ input Period = AggregationPeriod.YEAR;
 # input Period = AggregationPeriod.MONTH;
 # input Period = AggregationPeriod.YEAR;
 
-
 ### LOOKUPS ###
 def rawValue  = close(GetSymbol(), Period);
-
 
 ### CALCULATIONS ###
 def value = if !IsNaN(rawValue) then rawValue else 0;
@@ -14,7 +12,6 @@ def value = if !IsNaN(rawValue) then rawValue else 0;
 def change = if !IsNaN(value[1])
     then 100 * value / value[1] - 1
     else 0;
-
 
 ### PLOTS ###
 plot P = Round(change, 2);
