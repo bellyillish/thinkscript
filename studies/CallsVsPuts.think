@@ -272,24 +272,24 @@ declare lower;
     }
 
     # Overlay/Stack
-    def positiveTotal;
-    def positiveCalls;
-    def positivePuts;
+    def posCalls;
+    def posPuts;
+    def posTotal;
     if Chart().isIntradayBar {
-        positiveCalls = Max(positiveCalls[1], diffCalls);
-        positivePuts  = Max(positivePuts[1],  diffPuts);
-        positiveTotal = Max(positiveTotal[1], diffTotal);
+        posCalls = Max(0, diffCalls);
+        posPuts  = Max(0, diffPuts);
+        posTotal = Max(0, diffTotal);
     }
     else {
-        positiveCalls = diffCalls;
-        positivePuts  = diffPuts;
-        positiveTotal = diffTotal;
+        posCalls = diffCalls;
+        posPuts  = diffPuts;
+        posTotal = diffTotal;
     }
 
     # Ratio
     def rawChange;
     if Display == Display.Ratio {
-        rawChange = (diffCalls - diffPuts) / positiveTotal;
+        rawChange = (diffCalls - diffPuts) / diffTotal;
     }
     else {
         rawChange = diffCalls - diffPuts;
@@ -365,7 +365,7 @@ declare lower;
     );
 
     # Stack/overlay puts
-    plot Puts = if Display == Display.Stack then -positivePuts else positivePuts;
+    plot Puts = if Display == Display.Stack then -posPuts else posPuts;
     Puts.SetHiding(Display != Display.Overlay and Display != Display.Stack);
     Puts.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
     Puts.DefineColor("Up", Color.UPTICK);
@@ -373,13 +373,13 @@ declare lower;
     Puts.DefineColor("Neutral", Color.DARK_GRAY);
     Puts.SetDefaultColor(Puts.Color("Down"));
     Puts.AssignValueColor(
-        if Display == Display.Overlay or positivePuts > positiveCalls
+        if Display == Display.Overlay or posPuts > posCalls
             then Puts.Color("Down")
             else Puts.Color("Neutral")
     );
 
     # Stack calls
-    plot Calls = positiveCalls;
+    plot Calls = posCalls;
     Calls.SetHiding(Display != Display.Stack);
     Calls.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
     Calls.DefineColor("Up", Color.UPTICK);
@@ -387,13 +387,13 @@ declare lower;
     Calls.DefineColor("Neutral", Color.DARK_GRAY);
     Calls.SetDefaultColor(Calls.Color("Up"));
     Calls.AssignValueColor(
-        if Display == Display.Overlay or positiveCalls > positivePuts
+        if Display == Display.Overlay or posCalls > posPuts
             then Calls.Color("Up")
             else Calls.Color("Neutral")
     );
 
     # Overlay up/diffTotal
-    plot T = positiveCalls + positivePuts;
+    plot T = posCalls + posPuts;
     T.SetHiding(Display != Display.Overlay);
     T.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
     T.DefineColor("Up", Color.UPTICK);
