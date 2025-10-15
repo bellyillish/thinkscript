@@ -210,13 +210,12 @@ declare upper;
 
 
 ### PLOTS ###
-    DefineGlobalColor("Line",       CreateColor(48, 48, 48));
     DefineGlobalColor("Separator",  CreateColor(32, 32, 32));
     DefineGlobalColor("Background", CreateColor(12, 12, 12));
 
     # VWAP
     plot AnchoredVWAP = anchored;
-    AnchoredVWAP.DefineColor("Value", Color.GRAY);
+    AnchoredVWAP.DefineColor("Value", Color.LIGHT_GRAY);
     AnchoredVWAP.SetDefaultColor(AnchoredVWAP.Color("Value"));
 
     AnchoredVWAP.AssignValueColor(

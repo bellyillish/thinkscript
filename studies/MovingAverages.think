@@ -200,46 +200,46 @@ declare upper;
 ### PLOTS ###
     plot EMA9 = DailyAverage(9, AverageType.EXPONENTIAL, type);
     EMA9.SetHiding(!ShowEma9);
-    EMA9.DefineColor("Average", CreateColor(140, 118, 69));
+    EMA9.DefineColor("Average", CreateColor(61, 25, 25));
     EMA9.SetDefaultColor(EMA9.Color("Average"));
 
     plot EMA12 = DailyAverage(12, AverageType.EXPONENTIAL, type);
     EMA12.SetHiding(!ShowEma12);
-    EMA12.DefineColor("Average", CreateColor(140, 94,  56));
+    EMA12.DefineColor("Average", CreateColor(57, 36, 23));
     EMA12.SetDefaultColor(EMA12.Color("Average"));
 
     plot EMA21 = DailyAverage(21, AverageType.EXPONENTIAL, type);
     EMA21.SetHiding(!ShowEma21);
-    EMA21.DefineColor("Average", CreateColor(110, 75,  56));
+    EMA21.DefineColor("Average", CreateColor(66, 47, 22));
     EMA21.SetDefaultColor(EMA21.Color("Average"));
 
     plot EMA34 = DailyAverage(34, AverageType.EXPONENTIAL, type);
     EMA34.SetHiding(!ShowEma34);
-    EMA34.DefineColor("Average", CreateColor(92,  76,  126));
+    EMA34.DefineColor("Average", CreateColor(59, 54, 23));
     EMA34.SetDefaultColor(EMA34.Color("Average"));
 
     plot SMA20 = DailyAverage(20, AverageType.SIMPLE, type);
     SMA20.SetHiding(!ShowSma20);
-    SMA20.DefineColor("Average", CreateColor(118, 76,  91));
+    SMA20.DefineColor("Average", CreateColor(23, 54, 34));
     SMA20.SetDefaultColor(SMA20.Color("Average"));
 
     plot SMA50 = DailyAverage(50,  AverageType.SIMPLE, type);
     SMA50.SetHiding(!ShowSma50);
-    SMA50.DefineColor("Average", CreateColor(65,  74,  126));
+    SMA50.DefineColor("Average", CreateColor(20, 49, 49));
     SMA50.SetDefaultColor(SMA50.Color("Average"));
 
     plot SMA100 = DailyAverage(100,  AverageType.SIMPLE, type);
     SMA100.SetHiding(!ShowSma100);
-    SMA100.DefineColor("Average", CreateColor(45,  78,  113));
+    SMA100.DefineColor("Average", CreateColor(27, 54, 86));
     SMA100.SetDefaultColor(SMA100.Color("Average"));
 
     plot SMA200 = DailyAverage(200, AverageType.SIMPLE, type);
     SMA200.SetHiding(!ShowSma200);
-    SMA200.DefineColor("Average", CreateColor(38,  78,  78));
+    SMA200.DefineColor("Average", CreateColor(30, 36, 82));
     SMA200.SetDefaultColor(SMA200.Color("Average"));
 
     plot SMA250 = DailyAverage(250, AverageType.SIMPLE, type);
     SMA250.SetHiding(!ShowSma250);
-    SMA250.DefineColor("Average", CreateColor(50,  95,  70));
+    SMA250.DefineColor("Average", CreateColor(50, 37, 82));
     SMA250.SetDefaultColor(SMA250.Color("Average"));
 ###

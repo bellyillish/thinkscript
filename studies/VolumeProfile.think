@@ -264,34 +264,34 @@ declare upper;
 
 
 ### PLOTS ###
-    DefineGlobalColor("Profile",   CreateColor(48, 48, 48));
+    DefineGlobalColor("Profile",   CreateColor(40, 40, 40));
     DefineGlobalColor("Separator", CreateColor(32, 32, 32));
 
     VP.Show(color = GlobalColor("Profile"));
 
     plot POC = if shouldPlot then valuePOC else Double.NaN;
     POC.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
-    POC.DefineColor("Value", Color.DARK_ORANGE);
+    POC.DefineColor("Value", CreateColor(36, 104, 103));
     POC.SetDefaultColor(POC.Color("Value"));
 
     plot VAH = if shouldPlot then valueVAH else Double.NaN;
-    VAH.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
-    VAH.DefineColor("Value", Color.DARK_GRAY);
+    VAH.SetPaintingStrategy(PaintingStrategy.DASHES);
+    VAH.DefineColor("Value", CreateColor(95, 95, 95));
     VAH.SetDefaultColor(VAH.Color("Value"));
 
     plot VAL = if shouldPlot then valueVAL else Double.NaN;
-    VAL.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
-    VAL.DefineColor("Value", Color.DARK_GRAY);
+    VAL.SetPaintingStrategy(PaintingStrategy.DASHES);
+    VAL.DefineColor("Value", CreateColor(95, 95, 95));
     VAL.SetDefaultColor(VAL.Color("Value"));
 
     plot HI = if shouldPlot then valueH else Double.NaN;
     HI.SetPaintingStrategy(PaintingStrategy.DASHES);
-    HI.DefineColor("Value", CreateColor(32, 32, 32));
+    HI.DefineColor("Value", CreateColor(55, 55, 55));
     HI.SetDefaultColor(HI.Color("Value"));
 
     plot LO = if shouldPlot then valueL else Double.NaN;
     LO.SetPaintingStrategy(PaintingStrategy.DASHES);
-    LO.DefineColor("Value", CreateColor(32, 32, 32));
+    LO.DefineColor("Value", CreateColor(55, 55, 55));
     LO.SetDefaultColor(LO.Color("Value"));
 
     # Separators

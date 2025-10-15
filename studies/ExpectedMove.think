@@ -219,8 +219,8 @@ declare upper;
 
 ### INPUTS ###
     input Period = {
-        default "Daily",
-        "Weekly",
+        "Daily",
+        default "Weekly",
         "Monthly",
         "Quarterly"
     };
@@ -379,7 +379,7 @@ declare upper;
 
     plot OptH = if isLatestPeriod and oh > 0 then oh else Double.NaN;
     OptH.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
-    OptH.DefineColor("Bar", Color.WHITE);
+    OptH.DefineColor("Bar", Color.LIGHT_GRAY);
     OptH.SetDefaultColor(OptH.Color("Bar"));
     OptH.SetHiding(!ShowOV or hideOnTimeFrame);
 
@@ -390,7 +390,7 @@ declare upper;
 
     plot ImpH = if isLatestPeriod and ih > 0 then ih else Double.NaN;
     ImpH.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
-    ImpH.DefineColor("Bar", CreateColor(77,  166, 255));
+    ImpH.DefineColor("Bar", CreateColor(77, 166, 255));
     ImpH.SetDefaultColor(ImpH.Color("Bar"));
     ImpH.SetHiding(!ShowIV or hideOnTimeFrame);
 

@@ -319,7 +319,7 @@ declare real_size;
     # Summation
     plot S = summation;
     S.SetHiding(Display != Display.Summation);
-    S.DefineColor("Up", CreateColor(255, 184, 77));
+    S.DefineColor("Up", CreateColor(230, 205, 80));
     S.DefineColor("Down", CreateColor(77, 166, 255));
     S.DefineColor("Neutral", Color.DARK_GRAY);
     S.SetDefaultColor(S.Color("Neutral"));
@@ -337,7 +337,7 @@ declare real_size;
     plot Ratio = change;
     Ratio.SetHiding(Display != Display.Ratio);
     Ratio.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
-    Ratio.DefineColor("Up", CreateColor(255, 184, 77));
+    Ratio.DefineColor("Up", CreateColor(230, 205, 80));
     Ratio.DefineColor("Down", CreateColor(77, 166, 255));
     Ratio.DefineColor("Neutral", Color.DARK_GRAY);
     Ratio.SetDefaultColor(Ratio.Color("Neutral"));
@@ -352,7 +352,7 @@ declare real_size;
     # RTH
     plot RTH = sumRTH;
     RTH.SetHiding(Display != Display.Overlay and Display != Display.Cloud);
-    RTH.DefineColor("Value", CreateColor(255, 184, 77));
+    RTH.DefineColor("Value", CreateColor(230, 205, 80));
     RTH.SetDefaultColor(RTH.Color("Value"));
     RTH.AssignValueColor(
         if isNewPeriod and Display != Display.Cloud
