@@ -40,6 +40,8 @@ declare real_size;
     }
 
     script Chart {
+        input Validator = "$DJI";
+
         def aggregation   = GetAggregationPeriod();
         def isIntraday    = aggregation <  AggregationPeriod.DAY;
         def isDaily       = aggregation == AggregationPeriod.DAY;
@@ -47,7 +49,7 @@ declare real_size;
         def isIntradayBar = isIntraday and Date() == Date()[1];
         def number        = BarNumber();
         def startBar      = First(number);
-        def endBar        = HighestAll(number * !IsNaN(close));
+        def endBar        = HighestAll(number * !IsNaN(close(Validator)));
         def isValidBar    = number between startBar and endBar;
         def startOffset   = number - startBar;
         def endOffset     = number - endBar;
@@ -134,20 +136,6 @@ declare real_size;
 ### INPUTS ###
     input Ticker = "";
 
-    input Display = {
-        default "Summation",
-        "Change"
-    };
-
-    input Scale = {
-        default "Logarithmic",
-        "Relative",
-        "Absolute"
-    };
-
-    input Oscillation = 0;
-    input Smoothing   = 0;
-
     input Quote = {
         default "Close",
         "Open",
@@ -161,16 +149,16 @@ declare real_size;
         "ETH"
     };
 
-    input Aggregation = {
-        default "Auto",
-        "Daily",
-        "Weekly",
-        "Monthly",
-        "Quarterly",
-        "Yearly"
+    input Display = {
+        default "Summation",
+        "Change"
     };
 
-    input Sanitize = no;
+    input Scale = {
+        default "Logarithmic",
+        "Relative",
+        "Absolute"
+    };
 
     input Period = {
         default "Chart",
@@ -188,6 +176,9 @@ declare real_size;
     @Date input SinceDate = 20250407;
     input CandlesAgo      = 100;
     input Separators      = yes;
+    input Sanitize        = no;
+    input Oscillation     = 0;
+    input Smoothing       = 0;
 ###
 
 
@@ -204,37 +195,15 @@ declare real_size;
         default      : type = FundamentalType.CLOSE;
     }
 
-    def agg;
-    switch (Aggregation) {
-        case "Daily"     : agg = AggregationPeriod.DAY;
-        case "Weekly"    : agg = AggregationPeriod.WEEK;
-        case "Monthly"   : agg = AggregationPeriod.MONTH;
-        case "Quarterly" : agg = AggregationPeriod.QUARTER;
-        case "Yearly"    : agg = AggregationPeriod.YEAR;
-        default          : agg = 0;
-    }
-
     def rawOpen;
     def rawClose;
     if Ticker != "" {
-        if agg > Chart().aggregation {
-            rawClose = Fundamental(type, Ticker, agg);
-            rawOpen  = open(Ticker, agg);
-        }
-        else {
-            rawClose = Fundamental(type, Ticker);
-            rawOpen  = open(Ticker);
-        }
+        rawClose = Fundamental(type, Ticker);
+        rawOpen  = open(Ticker);
     }
     else {
-        if agg > Chart().aggregation {
-            rawClose = Fundamental(type, GetSymbol(), agg);
-            rawOpen = open(GetSymbol(), agg);
-        }
-        else {
-            rawClose = Fundamental(type, GetSymbol());
-            rawOpen = open(GetSymbol());
-        }
+        rawClose = Fundamental(type, GetSymbol());
+        rawOpen = open(GetSymbol());
     }
 
     # Sanitize
@@ -320,14 +289,12 @@ declare real_size;
     if !Chart().isValidBar or !isActivePeriod {
         rawSum = Double.NaN;
     }
-    else if isNewPeriod {
-        rawSum = if Scale == Scale.Relative
-            then change + 1
-            else change;
+    else if isNewPeriod or IsNaN(rawSum[1]) {
+        rawSum = change + (Scale == Scale.Relative);
     }
     else {
         rawSum = if Scale == Scale.Relative
-            then rawSum[1] * (1 + change)
+            then rawSum[1] * (change + 1)
             else rawSum[1] + change;
     }
 
@@ -357,9 +324,9 @@ declare real_size;
     S.AssignValueColor(
         if isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
-        else if summation > 0
+        else if change > 0
             then S.Color("Up")
-        else if summation < 0
+        else if change < 0
             then S.Color("Down")
             else S.Color("Neutral")
     );

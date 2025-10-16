@@ -39,6 +39,8 @@ declare upper;
     }
 
     script Chart {
+        input Validator = "$DJI";
+
         def aggregation   = GetAggregationPeriod();
         def isIntraday    = aggregation <  AggregationPeriod.DAY;
         def isDaily       = aggregation == AggregationPeriod.DAY;
@@ -46,7 +48,7 @@ declare upper;
         def isIntradayBar = isIntraday and Date() == Date()[1];
         def number        = BarNumber();
         def startBar      = First(number);
-        def endBar        = HighestAll(number * !IsNaN(close));
+        def endBar        = HighestAll(number * !IsNaN(close(Validator)));
         def isValidBar    = number between startBar and endBar;
         def startOffset   = number - startBar;
         def endOffset     = number - endBar;
@@ -264,34 +266,34 @@ declare upper;
 
 
 ### PLOTS ###
-    DefineGlobalColor("Profile",   CreateColor(40, 40, 40));
+    DefineGlobalColor("Profile",   CreateColor(48, 48, 48));
     DefineGlobalColor("Separator", CreateColor(32, 32, 32));
 
     VP.Show(color = GlobalColor("Profile"));
 
     plot POC = if shouldPlot then valuePOC else Double.NaN;
     POC.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
-    POC.DefineColor("Value", CreateColor(36, 104, 103));
+    POC.DefineColor("Value", CreateColor(143, 90, 35));
     POC.SetDefaultColor(POC.Color("Value"));
 
     plot VAH = if shouldPlot then valueVAH else Double.NaN;
     VAH.SetPaintingStrategy(PaintingStrategy.DASHES);
-    VAH.DefineColor("Value", CreateColor(95, 95, 95));
+    VAH.DefineColor("Value", CreateColor(72, 72, 72));
     VAH.SetDefaultColor(VAH.Color("Value"));
 
     plot VAL = if shouldPlot then valueVAL else Double.NaN;
     VAL.SetPaintingStrategy(PaintingStrategy.DASHES);
-    VAL.DefineColor("Value", CreateColor(95, 95, 95));
+    VAL.DefineColor("Value", CreateColor(72, 72, 72));
     VAL.SetDefaultColor(VAL.Color("Value"));
 
     plot HI = if shouldPlot then valueH else Double.NaN;
     HI.SetPaintingStrategy(PaintingStrategy.DASHES);
-    HI.DefineColor("Value", CreateColor(55, 55, 55));
+    HI.DefineColor("Value", CreateColor(48, 48, 48));
     HI.SetDefaultColor(HI.Color("Value"));
 
     plot LO = if shouldPlot then valueL else Double.NaN;
     LO.SetPaintingStrategy(PaintingStrategy.DASHES);
-    LO.DefineColor("Value", CreateColor(55, 55, 55));
+    LO.DefineColor("Value", CreateColor(48, 48, 48));
     LO.SetDefaultColor(LO.Color("Value"));
 
     # Separators

@@ -39,6 +39,8 @@ declare lower;
     }
 
     script Chart {
+        input Validator = "$DJI";
+
         def aggregation   = GetAggregationPeriod();
         def isIntraday    = aggregation <  AggregationPeriod.DAY;
         def isDaily       = aggregation == AggregationPeriod.DAY;
@@ -46,7 +48,7 @@ declare lower;
         def isIntradayBar = isIntraday and Date() == Date()[1];
         def number        = BarNumber();
         def startBar      = First(number);
-        def endBar        = HighestAll(number * !IsNaN(close));
+        def endBar        = HighestAll(number * !IsNaN(close(Validator)));
         def isValidBar    = number between startBar and endBar;
         def startOffset   = number - startBar;
         def endOffset     = number - endBar;
@@ -176,6 +178,17 @@ declare lower;
 ### INPUTS ###
     input Ticker = "";
 
+    input Quote = {
+        default "Close",
+        "Open",
+        "High",
+        "Low",
+        "HL2",
+        "HLC3",
+        "OHLC4",
+        "VWAP"
+    };
+
     input Display = {
         default "Lower",
         "Upper",
@@ -187,17 +200,6 @@ declare lower;
         "Linear",
         "Both",
         "Either"
-    };
-
-    input Quote = {
-        default "Close",
-        "Open",
-        "High",
-        "Low",
-        "HL2",
-        "HLC3",
-        "OHLC4",
-        "VWAP"
     };
 
     input Sanitize      = no;

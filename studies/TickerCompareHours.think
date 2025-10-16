@@ -40,6 +40,8 @@ declare real_size;
     }
 
     script Chart {
+        input Validator = "$DJI";
+
         def aggregation   = GetAggregationPeriod();
         def isIntraday    = aggregation <  AggregationPeriod.DAY;
         def isDaily       = aggregation == AggregationPeriod.DAY;
@@ -47,7 +49,7 @@ declare real_size;
         def isIntradayBar = isIntraday and Date() == Date()[1];
         def number        = BarNumber();
         def startBar      = First(number);
-        def endBar        = HighestAll(number * !IsNaN(close));
+        def endBar        = HighestAll(number * !IsNaN(close(Validator)));
         def isValidBar    = number between startBar and endBar;
         def startOffset   = number - startBar;
         def endOffset     = number - endBar;
@@ -147,10 +149,6 @@ declare real_size;
         "Absolute"
     };
 
-    input Oscillation = 0;
-    input Smoothing   = 0;
-    input Sanitize    = no;
-
     input Period = {
         default "Chart",
         "Daily",
@@ -167,6 +165,9 @@ declare real_size;
     @Date input SinceDate = 20250407;
     input CandlesAgo      = 100;
     input Separators      = yes;
+    input Sanitize        = no;
+    input Oscillation     = 0;
+    input Smoothing       = 0;
 ###
 
 
@@ -267,28 +268,32 @@ declare real_size;
         changeETH = oscETH;
     }
 
-    # Summation
+    # Summation RTH
     def rawSumRTH;
-    def rawSumETH;
-    if !Chart().isValidBar or !isActivePeriod {
+    if !Chart().isValidBar or !isActivePeriod or IsNaN(changeRTH + changeETH) {
         rawSumRTH = Double.NaN;
-        rawSumETH = Double.NaN;
     }
-    else if isNewPeriod and Scale == Scale.Relative {
-        rawSumRTH = changeRTH + 1;
-        rawSumETH = changeETH + 1;
-    }
-    else if isNewPeriod {
-        rawSumRTH = changeRTH;
-        rawSumETH = changeETH;
-    }
-    else if Scale == Scale.Relative {
-        rawSumRTH = rawSumRTH[1] * (changeRTH + 1);
-        rawSumETH = rawSumETH[1] * (changeETH + 1);
+    else if isNewPeriod or IsNaN(rawSumRTH[1]) {
+        rawSumRTH = changeRTH + (Scale == Scale.Relative);
     }
     else {
-        rawSumRTH = rawSumRTH[1] + changeRTH;
-        rawSumETH = rawSumETH[1] + changeETH;
+        rawSumRTH = if Scale == Scale.Relative
+            then rawSumRTH[1] * (changeRTH + 1)
+            else rawSumRTH[1] + changeRTH;
+    }
+
+    # Summation ETH
+    def rawSumETH;
+    if !Chart().isValidBar or !isActivePeriod or IsNaN(changeRTH + changeETH) {
+        rawSumETH = Double.NaN;
+    }
+    else if isNewPeriod or IsNaN(rawSumETH[1]) {
+        rawSumETH = changeETH + (Scale == Scale.Relative);
+    }
+    else {
+        rawSumETH = if Scale == Scale.Relative
+            then rawSumETH[1] * (changeETH + 1)
+            else rawSumETH[1] + changeETH;
     }
 
     # Relative summation

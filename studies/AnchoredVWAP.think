@@ -39,6 +39,8 @@ declare upper;
     }
 
     script Chart {
+        input Validator = "$DJI";
+
         def aggregation   = GetAggregationPeriod();
         def isIntraday    = aggregation <  AggregationPeriod.DAY;
         def isDaily       = aggregation == AggregationPeriod.DAY;
@@ -46,7 +48,7 @@ declare upper;
         def isIntradayBar = isIntraday and Date() == Date()[1];
         def number        = BarNumber();
         def startBar      = First(number);
-        def endBar        = HighestAll(number * !IsNaN(close));
+        def endBar        = HighestAll(number * !IsNaN(close(Validator)));
         def isValidBar    = number between startBar and endBar;
         def startOffset   = number - startBar;
         def endOffset     = number - endBar;
@@ -142,8 +144,6 @@ declare upper;
         default "VWAP"
     };
 
-    input Sanitize = no;
-
     input Period = {
         default "Chart",
         "Daily",
@@ -160,6 +160,7 @@ declare upper;
     @Date input SinceDate = 20250407;
     input CandlesAgo      = 100;
     input Separators      = yes;
+    input Sanitize        = no;
 ###
 
 
@@ -196,12 +197,12 @@ declare upper;
         volumeSum = Double.NaN;
         vwapSum   = Double.NaN;
     }
-    else if isNewPeriod {
+    else if isNewPeriod or IsNaN(vwapSum[1] + volumeSum[1]) {
         vwapSum   = volume * data;
         volumeSum = volume;
     }
     else {
-        vwapSum   = vwapSum [1]  + volume * vwap;
+        vwapSum   = vwapSum [1]  + volume * data;
         volumeSum = volumeSum[1] + volume;
     }
 
