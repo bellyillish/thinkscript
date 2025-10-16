@@ -11,11 +11,16 @@ declare real_size;
         def dom      = GetDayOfMonth(yyyymmdd);
         def dow      = GetDayOfWeek(yyyymmdd);
         def dowj1    = GetDayOfWeek(yyyy * 10000 + 0101);
-        def ww       = Ceil((doy + 1 + if dowj1 >= 5 then dowj1 - 7 else dowj1) / 7);
+        def ww       = GetWeek();
         def q        = Ceil(mm / 3);
         def yyyyq    = yyyy * 10 + q;
         def yyyymm   = yyyy * 100 + mm;
-        def yyyyww   = yyyy * 100 + ww;
+
+        def minus = if yyyy > yyyy[1] and ww >= ww[1] then 1
+            else if ww != ww[1] then 0
+            else minus[1];
+
+        def yyyyww = (yyyy - minus) * 100 + ww;
 
         def isAfterOpex    = (dom - 14 - if dow > 5 then dow - 5 else dow + 2) > 0;
         def isEndOfQuarter = mm % 3 == 0;
