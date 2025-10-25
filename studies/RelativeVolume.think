@@ -1,4 +1,5 @@
 declare lower;
+declare zerobase;
 
 
 ### SCRIPTS ###
@@ -170,8 +171,9 @@ declare lower;
 
 
 ### INPUTS ###
-    input Market = {
-        default "ALLUSA",
+    input Source = {
+        default "Ticker",
+        "ALLUSA",
         "NYSE",
         "NASDAQ",
         "S&P 500",
@@ -180,136 +182,88 @@ declare lower;
         "DJIA"
     };
 
-    input Quote = {
-        default "Close",
-        "Open",
-        "High",
-        "Low",
-        "HL2",
-        "HLC3",
-        "OHLC4"
-    };
+    input Ticker = "";
 
     input Display = {
-        default "Difference",
-        "Percentage",
-        "Ratio",
-        "Log Ratio",
-        "Cumulative"
+        default "Relative",
+        "Absolute"
     };
 
-    input Period = {
-        default "Chart",
-        "Daily",
-        "Weekly",
-        "Monthly",
-        "MonthlyOPEX",
-        "Quarterly",
-        "QuarterlyOPEX",
-        "Earnings",
-        "Yearly",
-        "CandlesAgo",
-        "SinceDate"
-    };
-
-    @Date input SinceDate = 20250407;
-    input CandlesAgo      = 100;
-    input Separators      = yes;
-    input Sanitize        = no;
-    input Oscillation     = 0;
-    input Smoothing       = 0;
+    input Length     = 20;
+    input Deviations = 2.0;
+    input Negative   = yes;
+    input Sanitize   = no;
+    input Smoothing  = 0;
 ###
 
 
 ### LOOKUPS ###
-    def type;
-    switch (Quote) {
-        case "Open"  : type = FundamentalType.OPEN;
-        case "High"  : type = FundamentalType.HIGH;
-        case "Low"   : type = FundamentalType.LOW;
-        case "HL2"   : type = FundamentalType.HL2;
-        case "HLC3"  : type = FundamentalType.HLC3;
-        case "OHLC4" : type = FundamentalType.OHLC4;
-        default      : type = FundamentalType.CLOSE;
-    }
-
     # Lookup
-    def rawTick;
-    def rawAll;
-    switch (Market) {
+    def rawVolume;
+    def rawClose;
+    switch (Source) {
         case "ALLUSA":
-            rawTick = Fundamental(type, "$TIKUS");
-            rawAll  = close("$ADVUS") + close("$DECLUS") + close("$UNCHUS");
+            rawVolume = close("$TVOLUS") * 1000;
+            rawClose  = close("$DWCF");
         case "NYSE":
-            rawTick = Fundamental(type, "$TICK");
-            rawAll  = close("$ADVN") + close("$DECN") + close("$UNCN");
+            rawVolume = close("$TVOL") * 1000;
+            rawClose  = close("NYA");
         case "NASDAQ":
-            rawTick = Fundamental(type, "$TICK/Q");
-            rawAll  = close("$ADVN/Q") + close("$DECN/Q") + close("$UNCN/Q");
+            rawVolume = close("$TVOL/Q") * 1000;
+            rawClose  = close("$COMP");
         case "S&P 500":
-            rawTick = Fundamental(type, "$TIKSP");
-            rawAll  = close("$ADVSP") + close("$DECLSP") + close("$UNCHSP");
+            rawVolume = close("$TVOLSP") * 1000;
+            rawClose  = close("SPX");
         case "NASDAQ 100":
-            rawTick = Fundamental(type, "$TIKND");
-            rawAll  = close("$ADVND") + close("$DECLND") + close("$UNCHND");
+            rawVolume = close("$TVOLND") * 1000;
+            rawClose  = close("NDX");
         case "RUSSELL 2000":
-            rawTick = Fundamental(type, "$TIKRL");
-            rawAll  = close("$ADVRL") + close("$DECLRL") + close("$UNCHRL");
+            rawVolume = close("$TVOLRL") * 1000;
+            rawClose  = close("RUT");
         case "DJIA":
-            rawTick = Fundamental(type, "$TIKI");
-            rawAll  = close("$ADVI") + close("$DECLI") + close("$UNCHI");
+            rawVolume = close("$TVOLI") * 1000;
+            rawClose  = close("$DJI");
+        default:
+            if Ticker != "" {
+                rawVolume = volume(Ticker);
+                rawClose  = close(Ticker);
+            }
+            else {
+                rawVolume = volume;
+                rawClose  = close;
+            }
     }
 
-    def tick;
-    def all;
+    # Sanitize
+    def dataVolume;
+    def dataClose;
     if Sanitize {
-        tick = Value(rawTick);
-        all  = Value(rawAll);
+        dataVolume = Value(rawVolume);
+        dataClose  = Value(rawClose);
     }
     else {
-        tick = rawTick;
-        all  = rawAll;
+        dataVolume = rawVolume;
+        dataClose  = rawClose;
     }
 ###
 
 
 ### CALCULATIONS ###
-    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
-    def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
-
-    # Up/Down tick
-    def up = (all + tick) / 2;
-    def dn = (all - tick) / 2;
-
-    # Cumulative
-    def sum;
-    if !Chart().isValidBar or !isActivePeriod {
-        sum = Double.NaN;
-    }
-    else if isNewPeriod or IsNaN(sum[1]) {
-        sum = tick;
+    # Internals
+    def tickVolume;
+    if Chart().isIntradayBar and Source != Source.Ticker {
+        tickVolume = dataVolume - dataVolume[1];
     }
     else {
-        sum = sum[1] + tick;
+        tickVolume = dataVolume;
     }
 
-    # Plots
-    def value;
-    switch (Display) {
-        case "Difference" : value = tick;
-        case "Ratio"      : value = up / dn;
-        case "Log Ratio"  : value = Log(up / dn);
-        case "Percentage" : value = up / all;
-        case "Cumulative" : value = sum;
-    }
-
-    # Neutral
-    def neutral;
-    switch (Display) {
-        case "Percentage" : neutral = 0.5;
-        case "Ratio"      : neutral = 1;
-        default           : neutral = 0;
-    }
+    # Relative
+    def oscVolume  = Filters(tickVolume, Length, Smoothing);
+    def volumeDevs = StDev(tickVolume, Length);
+    def relVolume  = if !Negative
+        then Max(0, oscVolume / volumeDevs)
+        else oscVolume / volumeDevs;
 ###
 
 
@@ -318,34 +272,49 @@ declare lower;
     DefineGlobalColor("Separator",  CreateColor(32, 32, 32));
     DefineGlobalColor("Background", CreateColor(12, 12, 12));
 
-    # Value
-    plot TK = Filters(value, Oscillation, Smoothing);
-    TK.DefineColor("Up", Color.UPTICK);
-    TK.DefineColor("Down", Color.DOWNTICK);
-    TK.DefineColor("Neutral", Color.DARK_GRAY);
-    TK.SetDefaultColor(TK.Color("Neutral"));
-    TK.AssignValueColor(
-        if Display == Display.Cumulative and isNewPeriod and isActivePeriod[1]
-            then GlobalColor("Background")
-        else if TK > neutral
-            then TK.Color("Up")
-        else if TK < neutral
-            then TK.Color("Down")
-            else TK.Color("Neutral")
+    # Absolute
+    plot AV = tickVolume;
+    AV.SetHiding(Display != Display.Absolute);
+    AV.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
+    AV.DefineColor("Normal", CreateColor(72, 72, 72));
+    AV.DefineColor("Abnormal", Color.GRAY);
+    AV.AssignValueColor(
+        if relVolume >= Deviations
+            then AV.Color("Abnormal")
+            else AV.Color("Normal")
     );
 
-    # Line
-    plot N = neutral;
+    # Relative
+    plot RV = relVolume;
+    RV.SetHiding(Display != Display.Relative);
+    RV.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
+    RV.DefineColor("AbnormalUp", Color.UPTICK);
+    RV.DefineColor("AbnormalDn", Color.DOWNTICK);
+    RV.DefineColor("Abnormal", Color.LIGHT_GRAY);
+    RV.DefineColor("Positive", Color.GRAY);
+    RV.DefineColor("Negative", CreateColor(72, 72, 72));
+    RV.AssignValueColor(
+        if relVolume >= Deviations and dataClose > dataClose[1]
+            then RV.Color("AbnormalUp")
+        else if relVolume >= Deviations and dataClose < dataClose[1]
+            then RV.Color("AbnormalDn")
+        else if relVolume >= Deviations
+            then RV.Color("Abnormal")
+        else if relVolume > 0
+            then RV.Color("Positive")
+            else RV.Color("Negative")
+    );
+
+    # Lines
+    plot D = Deviations;
+    D.SetHiding(Display != Display.Relative);
+    D.SetDefaultColor(GlobalColor("Line"));
+    D.HideBubble();
+    D.HideTitle();
+
+    plot N = 0;
     N.SetDefaultColor(GlobalColor("Line"));
     N.HideBubble();
     N.HideTitle();
     N.Hide();
-
-    # Separators
-    AddVerticalLine(
-        visible = Separators and isNewPeriod and isActivePeriod[1],
-        color   = GlobalColor("Separator"),
-        stroke  = Curve.SHORT_DASH,
-        text    = ""
-    );
 ###

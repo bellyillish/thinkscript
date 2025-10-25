@@ -40,7 +40,7 @@ declare upper;
         def yyyymmOpex = yyyyOpex * 100 + mmOpex;
 
         plot P = yyyymmdd;
-        P.hide();
+        #P.hide();
     }
 
     script Chart {
@@ -61,7 +61,7 @@ declare upper;
         def isEnd         = number == endBar;
 
         plot P = Double.NaN;
-        P.hide();
+        #P.hide();
     }
 
     script Value {
@@ -84,8 +84,8 @@ declare upper;
             then raw
             else value[1];
 
-        plot P = Double.NaN;
-        P.hide();
+        plot P = value;
+        #P.hide();
     }
 
     script Periods {
@@ -113,8 +113,11 @@ declare upper;
         else if period == "Quarterly" and aggregation <= AggregationPeriod.MONTH {
             isNew = isStart or Date().yyyyq != Date().yyyyq[1];
         }
-        else if period == "QuarterlyOPEX" and aggregation <= AggregationPeriod.MONTH{
+        else if period == "QuarterlyOPEX" and aggregation <= AggregationPeriod.MONTH {
             isNew = isStart or Date().yyyyqOpex != Date().yyyyqOpex[1];
+        }
+        else if period == "Earnings" and aggregation <= AggregationPeriod.MONTH {
+            isNew = isStart or HasEarnings(EarningTime.BEFORE_MARKET) or HasEarnings(EarningTime.AFTER_MARKET)[1];
         }
         else if period == "Yearly" and aggregation <= AggregationPeriod.QUARTER {
             isNew = isStart or Date().yyyy != Date().yyyy[1];
@@ -132,7 +135,7 @@ declare upper;
         def isActive = isNew or isActive[1];
 
         plot P = isNew;
-        P.hide();
+        #P.hide();
     }
 
     script DailyAverage {
@@ -160,21 +163,13 @@ declare upper;
         }
 
         plot P = avg;
-        P.hide();
+        #P.hide();
     }
 ###
 
 
 ### INPUTS ###
-    input ShowEma9   = no;
-    input ShowEma12  = yes;
-    input ShowEma21  = yes;
-    input ShowEma34  = no;
-    input ShowSma20  = no;
-    input ShowSma50  = yes;
-    input ShowSma100 = no;
-    input ShowSma200 = yes;
-    input ShowSma250 = yes;
+    input Method = AverageType.EXPONENTIAL;
 
     input Quote = {
         default "Close",
@@ -185,6 +180,12 @@ declare upper;
         "HLC3",
         "OHLC4",
         "VWAP"
+    };
+
+    input Scheme = {
+        "Light",
+        default "Medium",
+        "Dark"
     };
 ###
 
@@ -205,48 +206,70 @@ declare upper;
 
 
 ### PLOTS ###
-    plot EMA9 = DailyAverage(9, AverageType.EXPONENTIAL, type);
-    EMA9.SetHiding(!ShowEma9);
-    EMA9.DefineColor("Average", CreateColor(61, 25, 25));
-    EMA9.SetDefaultColor(EMA9.Color("Average"));
+    plot A5 = DailyAverage(5, Method, type);
+    A5.DefineColor("Light", CreateColor(255, 97, 97));
+    A5.DefineColor("Medium", CreateColor(128, 51, 51));
+    A5.DefineColor("Dark", CreateColor(61, 25, 25));
+    A5.SetDefaultColor(A5.Color(Scheme));
+    A5.Hide();
 
-    plot EMA12 = DailyAverage(12, AverageType.EXPONENTIAL, type);
-    EMA12.SetHiding(!ShowEma12);
-    EMA12.DefineColor("Average", CreateColor(57, 36, 23));
-    EMA12.SetDefaultColor(EMA12.Color("Average"));
+    plot A8 = DailyAverage(8, Method, type);
+    A8.DefineColor("Light", CreateColor(58, 157, 155));
+    A8.DefineColor("Medium", CreateColor(36, 104, 103));
+    A8.DefineColor("Dark", CreateColor(20, 49, 49));
+    A8.SetDefaultColor(A8.Color(Scheme));
+    A8.Hide();
 
-    plot EMA21 = DailyAverage(21, AverageType.EXPONENTIAL, type);
-    EMA21.SetHiding(!ShowEma21);
-    EMA21.DefineColor("Average", CreateColor(66, 47, 22));
-    EMA21.SetDefaultColor(EMA21.Color("Average"));
+    plot A13 = DailyAverage(13, Method, type);
+    A13.DefineColor("Light", CreateColor(217, 122, 74));
+    A13.DefineColor("Medium", CreateColor(118, 70, 41));
+    A13.DefineColor("Dark", CreateColor(57, 36, 23));
+    A13.SetDefaultColor(A13.Color(Scheme));
 
-    plot EMA34 = DailyAverage(34, AverageType.EXPONENTIAL, type);
-    EMA34.SetHiding(!ShowEma34);
-    EMA34.DefineColor("Average", CreateColor(59, 54, 23));
-    EMA34.SetDefaultColor(EMA34.Color("Average"));
+    plot A21 = DailyAverage(21, Method, type);
+    A21.DefineColor("Light", CreateColor(90, 111, 234));
+    A21.DefineColor("Medium", CreateColor(56, 65, 168));
+    A21.DefineColor("Dark", CreateColor(30, 36, 82));
+    A21.SetDefaultColor(A21.Color(Scheme));
 
-    plot SMA20 = DailyAverage(20, AverageType.SIMPLE, type);
-    SMA20.SetHiding(!ShowSma20);
-    SMA20.DefineColor("Average", CreateColor(23, 54, 34));
-    SMA20.SetDefaultColor(SMA20.Color("Average"));
+    plot A34 = DailyAverage(34, Method, type);
+    A34.DefineColor("Light", CreateColor(255, 159, 67));
+    A34.DefineColor("Medium", CreateColor(143, 90, 35));
+    A34.DefineColor("Dark", CreateColor(66, 47, 22));
+    A34.SetDefaultColor(A34.Color(Scheme));
+    A34.Hide();
 
-    plot SMA50 = DailyAverage(50,  AverageType.SIMPLE, type);
-    SMA50.SetHiding(!ShowSma50);
-    SMA50.DefineColor("Average", CreateColor(20, 49, 49));
-    SMA50.SetDefaultColor(SMA50.Color("Average"));
+    plot A55 = DailyAverage(55, Method, type);
+    A55.DefineColor("Light", CreateColor(77, 166, 255));
+    A55.DefineColor("Medium", CreateColor(50, 108, 171));
+    A55.DefineColor("Dark", CreateColor(27, 54, 86));
+    A55.SetDefaultColor(A55.Color(Scheme));
 
-    plot SMA100 = DailyAverage(100,  AverageType.SIMPLE, type);
-    SMA100.SetHiding(!ShowSma100);
-    SMA100.DefineColor("Average", CreateColor(27, 54, 86));
-    SMA100.SetDefaultColor(SMA100.Color("Average"));
+    plot A89 = DailyAverage(89, Method, type);
+    A89.DefineColor("Light", CreateColor(230, 205, 80));
+    A89.DefineColor("Medium", CreateColor(128, 115, 36));
+    A89.DefineColor("Dark", CreateColor(59, 54, 23));
+    A89.SetDefaultColor(A89.Color(Scheme));
+    A89.Hide();
 
-    plot SMA200 = DailyAverage(200, AverageType.SIMPLE, type);
-    SMA200.SetHiding(!ShowSma200);
-    SMA200.DefineColor("Average", CreateColor(30, 36, 82));
-    SMA200.SetDefaultColor(SMA200.Color("Average"));
+    plot A144 = DailyAverage(144, Method, type);
+    A144.DefineColor("Light", CreateColor(155, 106, 229));
+    A144.DefineColor("Medium", CreateColor(93, 63, 166));
+    A144.DefineColor("Dark", CreateColor(50, 37, 82));
+    A144.SetDefaultColor(A144.Color(Scheme));
+    A144.Hide();
 
-    plot SMA250 = DailyAverage(250, AverageType.SIMPLE, type);
-    SMA250.SetHiding(!ShowSma250);
-    SMA250.DefineColor("Average", CreateColor(50, 37, 82));
-    SMA250.SetDefaultColor(SMA250.Color("Average"));
+    plot A233 = DailyAverage(233, Method, type);
+    A233.DefineColor("Light", CreateColor(229, 115, 155));
+    A233.DefineColor("Medium", CreateColor(152, 63, 89));
+    A233.DefineColor("Dark", CreateColor(75, 39, 52));
+    A233.SetDefaultColor(A233.Color(Scheme));
+    A233.Hide();
+
+    plot A377 = DailyAverage(377, Method, type);
+    A377.DefineColor("Light", CreateColor(92, 201, 119));
+    A377.DefineColor("Medium", CreateColor(43, 116, 68));
+    A377.DefineColor("Dark", CreateColor(23, 54, 34));
+    A377.SetDefaultColor(A377.Color(Scheme));
+    A377.Hide();
 ###

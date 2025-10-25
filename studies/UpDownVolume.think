@@ -39,6 +39,10 @@ declare lower;
         def yyyyqOpex  = yyyyOpex * 10  + qOpex;
         def yyyymmOpex = yyyyOpex * 100 + mmOpex;
 
+        def lastEarnings = if HasEarnings(EarningTime.BEFORE_MARKET) or HasEarnings(EarningTime.AFTER_MARKET)[1]
+            then GetYYYYMMDD()
+            else lastEarnings[1];
+
         plot P = yyyymmdd;
         P.hide();
     }
@@ -84,8 +88,33 @@ declare lower;
             then raw
             else value[1];
 
-        plot P = Double.NaN;
+        plot P = value;
         P.hide();
+    }
+
+    script Filters {
+        input raw         = 0;
+        input oscillation = 0;
+        input smoothing   = 0;
+
+        def oscValue;
+        if oscillation > 1 {
+            oscValue = raw - Average(raw, oscillation);
+        }
+        else {
+            oscValue = raw;
+        }
+
+        def value;
+        if smoothing > 1 {
+            value = Inertia(oscValue, smoothing);
+        }
+        else {
+            value = oscValue;
+        }
+
+        plot P = value;
+        P.Hide();
     }
 
     script Periods {
@@ -113,8 +142,11 @@ declare lower;
         else if period == "Quarterly" and aggregation <= AggregationPeriod.MONTH {
             isNew = isStart or Date().yyyyq != Date().yyyyq[1];
         }
-        else if period == "QuarterlyOPEX" and aggregation <= AggregationPeriod.MONTH{
+        else if period == "QuarterlyOPEX" and aggregation <= AggregationPeriod.MONTH {
             isNew = isStart or Date().yyyyqOpex != Date().yyyyqOpex[1];
+        }
+        else if period == "Earnings" and aggregation <= AggregationPeriod.MONTH {
+            isNew = isStart or Date().lastEarnings != Date().lastEarnings[1];
         }
         else if period == "Yearly" and aggregation <= AggregationPeriod.QUARTER {
             isNew = isStart or Date().yyyy != Date().yyyy[1];
@@ -150,22 +182,23 @@ declare lower;
 
     input Quote = {
         default "Close",
+        "RTH",
         "Open",
         "High",
         "Low",
         "HL2",
         "HLC3",
-        "OHLC4",
-        "RTH",
-        "ETH"
+        "OHLC4"
     };
 
     input Display = {
         default "Difference",
-        "Summation",
+        "Tick",
+        "Percentage",
         "Ratio",
-        "Stack",
-        "Overlay"
+        "Log Ratio",
+        "Cumulative",
+        "Volume Graph"
     };
 
     input Period = {
@@ -176,6 +209,7 @@ declare lower;
         "MonthlyOPEX",
         "Quarterly",
         "QuarterlyOPEX",
+        "Earnings",
         "Yearly",
         "CandlesAgo",
         "SinceDate"
@@ -202,63 +236,87 @@ declare lower;
         default      : type = FundamentalType.CLOSE;
     }
 
+    # Lookup
     def rawUpOpen;
     def rawDnOpen;
+    def rawAllOpen;
     def rawUpClose;
     def rawDnClose;
+    def rawAllClose;
     switch (Market) {
         case "ALLUSA":
-            rawUpOpen  = open("$UVOLUS");
-            rawDnOpen  = open("$DVOLUS");
-            rawUpClose = Fundamental(type, "$UVOLUS");
-            rawDnClose = Fundamental(type, "$DVOLUS");
+            rawAllOpen  = open("$TVOLUS");
+            rawUpOpen   = open("$UVOLUS");
+            rawDnOpen   = open("$DVOLUS");
+            rawAllClose = close("$TVOLUS");
+            rawUpClose  = Fundamental(type, "$UVOLUS");
+            rawDnClose  = Fundamental(type, "$DVOLUS");
         case "NYSE":
-            rawUpOpen  = open("$UVOL");
-            rawDnOpen  = open("$DVOL");
-            rawUpClose = Fundamental(type, "$UVOL");
-            rawDnClose = Fundamental(type, "$DVOL");
+            rawAllOpen  = open("$TVOL");
+            rawUpOpen   = open("$UVOL");
+            rawDnOpen   = open("$DVOL");
+            rawAllClose = close("$TVOL");
+            rawUpClose  = Fundamental(type, "$UVOL");
+            rawDnClose  = Fundamental(type, "$DVOL");
         case "NASDAQ":
-            rawUpOpen  = open("$UVOL/Q");
-            rawDnOpen  = open("$DVOL/Q");
-            rawUpClose = Fundamental(type, "$UVOL/Q");
-            rawDnClose = Fundamental(type, "$DVOL/Q");
+            rawAllOpen  = open("$TVOL/Q");
+            rawUpOpen   = open("$UVOL/Q");
+            rawDnOpen   = open("$DVOL/Q");
+            rawAllClose = close("$TVOL/Q");
+            rawUpClose  = Fundamental(type, "$UVOL/Q");
+            rawDnClose  = Fundamental(type, "$DVOL/Q");
         case "S&P 500":
-            rawUpOpen  = open("$UVOLSP");
-            rawDnOpen  = open("$DVOLSP");
-            rawUpClose = Fundamental(type, "$UVOLSP");
-            rawDnClose = Fundamental(type, "$DVOLSP");
+            rawAllOpen  = open("$TVOLSP");
+            rawUpOpen   = open("$UVOLSP");
+            rawDnOpen   = open("$DVOLSP");
+            rawAllClose = close("$TVOLSP");
+            rawUpClose  = Fundamental(type, "$UVOLSP");
+            rawDnClose  = Fundamental(type, "$DVOLSP");
         case "NASDAQ 100":
-            rawUpOpen  = open("$UVOLND");
-            rawDnOpen  = open("$DVOLND");
-            rawUpClose = Fundamental(type, "$UVOLND");
-            rawDnClose = Fundamental(type, "$DVOLND");
+            rawAllOpen  = open("$TVOLND");
+            rawUpOpen   = open("$UVOLND");
+            rawDnOpen   = open("$DVOLND");
+            rawAllClose = close("$TVOLND");
+            rawUpClose  = Fundamental(type, "$UVOLND");
+            rawDnClose  = Fundamental(type, "$DVOLND");
         case "RUSSELL 2000":
-            rawUpOpen  = open("$UVOLRL");
-            rawDnOpen  = open("$DVOLRL");
-            rawUpClose = Fundamental(type, "$UVOLRL");
-            rawDnClose = Fundamental(type, "$DVOLRL");
+            rawAllOpen  = open("$TVOLRL");
+            rawUpOpen   = open("$UVOLRL");
+            rawDnOpen   = open("$DVOLRL");
+            rawAllClose = close("$TVOLRL");
+            rawUpClose  = Fundamental(type, "$UVOLRL");
+            rawDnClose  = Fundamental(type, "$DVOLRL");
         case "DJIA":
-            rawUpOpen  = open("$UVOLI");
-            rawDnOpen  = open("$DVOLI");
-            rawUpClose = Fundamental(type, "$UVOLI");
-            rawDnClose = Fundamental(type, "$DVOLI");
+            rawAllOpen  = open("$TVOLI");
+            rawUpOpen   = open("$UVOLI");
+            rawDnOpen   = open("$DVOLI");
+            rawAllClose = close("$TVOLI");
+            rawUpClose  = Fundamental(type, "$UVOLI");
+            rawDnClose  = Fundamental(type, "$DVOLI");
     }
 
+    # Sanitize
     def upOpen;
     def dnOpen;
+    def allOpen;
     def upClose;
     def dnClose;
+    def allClose;
     if Sanitize {
-        upOpen  = Value(rawUpOpen).value;
-        dnOpen  = Value(rawDnOpen).value;
-        upClose = Value(rawUpClose).value;
-        dnClose = Value(rawDnClose).value;
+        upOpen   = Value(rawUpOpen);
+        dnOpen   = Value(rawDnOpen);
+        allOpen  = Value(rawAllOpen);
+        upClose  = Value(rawUpClose);
+        dnClose  = Value(rawDnClose);
+        allClose = Value(rawAllClose);
     }
     else {
-        upOpen  = rawUpOpen;
-        dnOpen  = rawDnOpen;
-        upClose = rawUpClose;
-        dnClose = rawDnClose;
+        upOpen   = rawUpOpen;
+        dnOpen   = rawDnOpen;
+        allOpen  = rawAllOpen;
+        upClose  = rawUpClose;
+        dnClose  = rawDnClose;
+        allClose = rawAllClose;
     }
 ###
 
@@ -267,82 +325,75 @@ declare lower;
     def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
     def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
 
-    # Difference
-    def upDiff;
-    def dnDiff;
-    if Chart().isIntradayBar and Quote == Quote.ETH and !Chart().isMultiDay {
-        upDiff = upDiff[1];
-        dnDiff = dnDiff[1];
-    }
-    else if Chart().isIntradayBar {
-        upDiff = upClose - upClose[1];
-        dnDiff = dnClose - dnClose[1];
-    }
-    else if Quote == Quote.ETH and !Chart().isMultiDay {
-        upDiff = upOpen - upClose[1];
-        dnDiff = dnOpen - dnClose[1];
-    }
-    else if Quote == Quote.RTH and !Chart().isMultiDay {
-        upDiff = upClose - upOpen;
-        dnDiff = dnClose - dnOpen;
+    # RTH
+    def up;
+    def dn;
+    def all;
+    if Quote == Quote.RTH and !Chart().isIntradayBar and !Chart().isMultiDay {
+        up  = upClose  - upOpen;
+        dn  = dnClose  - dnOpen;
+        all = allClose - allOpen;
     }
     else {
-        upDiff = upClose;
-        dnDiff = dnClose;
+        up  = upClose;
+        dn  = dnClose;
+        all = allClose;
     }
 
-    # Overlay/Stack
-    def upPositive;
-    def dnPositive;
+    # Tick
+    def tickUp;
+    def tickDn;
+    def tickAll;
     if Chart().isIntradayBar {
-        upPositive = Max(0, upDiff) - Min(0, dnDiff);
-        dnPositive = Max(0, dnDiff) - Min(0, upDiff);
+        tickUp  = up  - up[1];
+        tickDn  = dn  - dn[1];
+        tickAll = all - all[1];
     }
     else {
-        upPositive = upDiff;
-        dnPositive = dnDiff;
+        tickUp  = up;
+        tickDn  = dn;
+        tickAll = all;
     }
 
-    # Ratio
-    def rawChange;
-    if Display == Display.Ratio {
-        rawChange = (upDiff - dnDiff) / (upPositive + dnPositive);
+    # Volume Graph
+    def graphDn;
+    if Chart().isIntradayBar {
+        graphDn = (Max(0, tickDn) + Min(0, tickUp)) * (tickAll / (tickUp + tickDn));
     }
     else {
-        rawChange = upDiff - dnDiff;
+        graphDn = tickDn;
     }
 
-    # Oscillation
-    def oscChange;
-    if Oscillation > 1 {
-        oscChange = rawChange  - Average(rawChange,  Oscillation);
-    }
-    else {
-        oscChange = rawChange;
-    }
-
-    # Smoothing
-    def change;
-    if Smoothing > 1 {
-        change = Inertia(oscChange, Smoothing);
-    }
-    else {
-        change = oscChange;
-    }
-
-    # Summation
-    def summation;
+    # Cumulative
+    def sum;
     if !Chart().isValidBar or !isActivePeriod {
-        summation = Double.NaN;
+        sum = Double.NaN;
     }
-    else if isNewPeriod or IsNaN(summation[1]) {
-        summation = change;
-    }
-    else if Chart().isIntradayBar and Quote == Quote.ETH {
-        summation = summation[1];
+    else if isNewPeriod or IsNaN(sum[1]) {
+        sum = tickUp - tickDn;
     }
     else {
-        summation = summation[1] + change;
+        sum = sum[1] + (tickUp - tickDn);
+    }
+
+    # Plots
+    def value;
+    switch (Display) {
+        case "Difference" : value = up - dn;
+        case "Tick"       : value = tickUp - tickDn;
+        case "Ratio"      : value = up / dn;
+        case "Log Ratio"  : value = Log(up / dn);
+        case "Percentage" : value = up / all;
+        case "Cumulative" : value = sum;
+        default           : value = Double.NaN;
+    }
+
+    # Neutral
+    def neutral;
+    switch (Display) {
+        case "Percentage" : neutral = 0.5;
+        case "Ratio"      : neutral = 1;
+        default           : neutral = 0;
     }
 ###
 
@@ -352,80 +403,49 @@ declare lower;
     DefineGlobalColor("Separator",  CreateColor(32, 32, 32));
     DefineGlobalColor("Background", CreateColor(12, 12, 12));
 
-    # Summation
-    plot S = summation;
-    S.SetHiding(Display != Display.Summation);
-    S.DefineColor("Up", Color.UPTICK);
-    S.DefineColor("Down", Color.DOWNTICK);
-    S.DefineColor("Neutral", Color.DARK_GRAY);
-    S.SetDefaultColor(S.Color("Neutral"));
-    S.AssignValueColor(
-        if isNewPeriod and isActivePeriod[1]
+    # Value
+    plot UD = Filters(value, Oscillation, Smoothing);
+    UD.SetHiding(Display == Display."Volume Graph");
+    UD.DefineColor("Up", Color.UPTICK);
+    UD.DefineColor("Down", Color.DOWNTICK);
+    UD.DefineColor("Neutral", Color.DARK_GRAY);
+    UD.SetDefaultColor(UD.Color("Neutral"));
+    UD.SetPaintingStrategy(
+        if Display == Display.Tick
+            then PaintingStrategy.HISTOGRAM
+            else PaintingStrategy.LINE
+    );
+    UD.AssignValueColor(
+        if Display == Display.Cumulative and isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
-        else if summation > 0
-            then S.Color("Up")
-        else if summation < 0
-            then S.Color("Down")
-            else S.Color("Neutral")
+        else if UD > neutral
+            then UD.Color("Up")
+        else if UD < neutral
+            then UD.Color("Down")
+            else UD.Color("Neutral")
     );
 
-    # Difference/ratio
-    plot C = change;
-    C.SetHiding(Display != Display.Ratio and Display != Display.Difference);
-    C.DefineColor("Up", Color.UPTICK);
-    C.DefineColor("Down", Color.DOWNTICK);
-    C.DefineColor("Neutral", Color.DARK_GRAY);
-    C.SetDefaultColor(C.Color("Neutral"));
-    C.AssignValueColor(
-        if change > 0
-            then C.Color("Up")
-        else if change < 0
-            then C.Color("Down")
-            else C.Color("Neutral")
-    );
-
-    # Stack/overlay down
-    plot D = if Display == Display.Stack then -dnPositive else dnPositive;
-    D.SetHiding(Display != Display.Overlay and Display != Display.Stack);
+    # Volume Graph
+    plot D = graphDn;
+    D.SetHiding(Display != Display."Volume Graph");
     D.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
-    D.DefineColor("Up", Color.UPTICK);
-    D.DefineColor("Down", Color.DOWNTICK);
-    D.DefineColor("Neutral", Color.DARK_GRAY);
-    D.SetDefaultColor(D.Color("Down"));
-    D.AssignValueColor(
-        if Display == Display.Overlay or dnPositive > upPositive
-            then D.Color("Down")
-            else D.Color("Neutral")
-    );
+    D.DefineColor("Value", Color.DOWNTICK);
+    D.SetDefaultColor(D.Color("Value"));
 
-    # Stack up
-    plot U = upPositive;
-    U.SetHiding(Display != Display.Stack);
-    U.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
-    U.DefineColor("Up", Color.UPTICK);
-    U.DefineColor("Down", Color.DOWNTICK);
-    U.DefineColor("Neutral", Color.DARK_GRAY);
-    U.SetDefaultColor(U.Color("Up"));
-    U.AssignValueColor(
-        if Display == Display.Overlay or upPositive > dnPositive
-            then U.Color("Up")
-            else U.Color("Neutral")
-    );
+    plot A = tickAll;
+    A.SetHiding(Display != Display."Volume Graph");
+    A.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
+    A.DefineColor("Value", Color.UPTICK);
+    A.SetDefaultColor(A.Color("Value"));
 
-    # Overlay up/total
-    plot T = upPositive + dnPositive;
-    T.SetHiding(Display != Display.Overlay);
-    T.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
-    T.DefineColor("Up", Color.UPTICK);
-    T.SetDefaultColor(T.Color("Up"));
+    # Line
+    plot N = neutral;
+    N.SetDefaultColor(GlobalColor("Line"));
+    N.HideBubble();
+    N.HideTitle();
+    N.Hide();
 
-    # Midline
-    plot Mid = 0;
-    Mid.SetDefaultColor(GlobalColor("Line"));
-    Mid.HideBubble();
-    Mid.HideTitle();
-
-    # Period separators
+    # Separators
     AddVerticalLine(
         visible = Separators and isNewPeriod and isActivePeriod[1],
         color   = GlobalColor("Separator"),
