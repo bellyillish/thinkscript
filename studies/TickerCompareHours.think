@@ -173,17 +173,17 @@ declare real_size;
 ### INPUTS ###
     input Ticker = "";
 
-    input Display = {
-        default "Summation",
-        "Overlay",
-        "Cloud",
-        "Ratio"
+    input Mode = {
+        default "Combined",
+        "Separate",
+        "Cloud"
     };
 
-    input Scale = {
+    input Display = {
         default "Logarithmic",
         "Relative",
-        "Absolute"
+        "Absolute",
+        "Tick"
     };
 
     input Period = {
@@ -217,32 +217,20 @@ declare real_size;
         rawClose = close(Ticker);
     }
     else {
-        rawOpen  = open(GetSymbol());
-        rawClose = close(GetSymbol());
+        rawOpen  = open;
+        rawClose = close;
     }
 
     # Sanitize
-    def cleanOpen;
-    def cleanClose;
-    if Sanitize {
-        cleanOpen  = Value(rawOpen);
-        cleanClose = Value(rawClose);
-    }
-    else {
-        cleanOpen  = rawOpen;
-        cleanClose = rawClose;
-    }
-
-    # Logarithmic
     def dataOpen;
     def dataClose;
-    if Scale == Scale.Logarithmic {
-        dataOpen  = Log(cleanOpen);
-        dataClose = Log(cleanClose);
+    if Sanitize {
+        dataOpen  = Value(rawOpen);
+        dataClose = Value(rawClose);
     }
     else {
-        dataOpen  = cleanOpen;
-        dataClose = cleanClose;
+        dataOpen  = rawOpen;
+        dataClose = rawClose;
     }
 ###
 
@@ -251,105 +239,92 @@ declare real_size;
     def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
     def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
 
-    # Bar start
-    def endRTH   = dataClose;
-    def startETH = dataClose[1];
+    # Logarithmic
+    def logOpen;
+    def logClose;
+    if Display == Display.Logarithmic {
+        logOpen  = Log(dataOpen);
+        logClose = Log(dataClose);
+    }
+    else {
+        logOpen  = dataOpen;
+        logClose = dataClose;
+    }
 
+    # Open
+    def startETH = logClose[1];
     def startRTH;
+    if !Chart().isIntradayBar and !Chart().isMultiDay {
+        startRTH = logOpen;
+    }
+    else {
+        startRTH = logClose[1];
+    }
+
+    # Close
+    def endRTH = logClose;
     def endETH;
     if Chart().isIntradayBar {
-        startRTH = dataClose[1];
-        endETH   = dataClose[1];
+        endETH = logClose[1];
     }
     else if !Chart().isMultiDay {
-        startRTH = dataOpen;
-        endETH   = dataOpen;
+        endETH = logOpen;
     }
     else {
-        startRTH = dataClose[1];
-        endETH   = dataClose;
+        endETH = logClose;
     }
 
-    # Change
-    def rawChangeRTH;
-    def rawChangeETH;
-    if Scale == Scale.Relative {
-        rawChangeRTH = endRTH / startRTH - 1;
-        rawChangeETH = endETH / startETH - 1;
+    # Tick
+    def rawTickRTH;
+    def rawTickETH;
+    def rawTick;
+    if Display == Display.Relative {
+        rawTickRTH = endRTH / startRTH - 1;
+        rawTickETH = endETH / startETH - 1;
+        rawTick    = (endRTH / startRTH) / (endETH / startETH) - 1;
     }
     else {
-        rawChangeRTH = endRTH - startRTH;
-        rawChangeETH = endETH - startETH;
+        rawTickRTH = endRTH - startRTH;
+        rawTickETH = endETH - startETH;
+        rawTick    = rawTickRTH - rawTickETH;
     }
 
-    # Oscillate
-    def oscRTH;
-    def oscETH;
-    if Oscillation > 1 {
-        oscRTH = rawChangeRTH - Average(rawChangeRTH, Oscillation);
-        oscETH = rawChangeETH - Average(rawChangeETH, Oscillation);
-    }
-    else {
-        oscRTH = rawChangeRTH;
-        oscETH = rawChangeETH;
-    }
-
-    # Smoothing
-    def changeRTH;
-    def changeETH;
-    if Smoothing > 1 {
-        changeRTH = Inertia(oscRTH, Smoothing);
-        changeETH = Inertia(oscETH, Smoothing);
-    }
-    else {
-        changeRTH = oscRTH;
-        changeETH = oscETH;
-    }
-
-    # Summation RTH
+    # Cumulative
     def rawSumRTH;
-    if !Chart().isValidBar or !isActivePeriod or IsNaN(changeRTH + changeETH) {
-        rawSumRTH = Double.NaN;
-    }
-    else if isNewPeriod or IsNaN(rawSumRTH[1]) {
-        rawSumRTH = changeRTH + (Scale == Scale.Relative);
-    }
-    else {
-        rawSumRTH = if Scale == Scale.Relative
-            then rawSumRTH[1] * (changeRTH + 1)
-            else rawSumRTH[1] + changeRTH;
-    }
-
-    # Summation ETH
     def rawSumETH;
-    if !Chart().isValidBar or !isActivePeriod or IsNaN(changeRTH + changeETH) {
-        rawSumETH = Double.NaN;
+    def rawSum;
+    if isNewPeriod {
+        rawSumRTH = rawTickRTH;
+        rawSumETH = rawTickETH;
+        rawSum    = rawTick;
     }
-    else if isNewPeriod or IsNaN(rawSumETH[1]) {
-        rawSumETH = changeETH + (Scale == Scale.Relative);
+    else if Display == Display.Relative {
+        rawSumRTH = (rawSumRTH[1] + 1) * (rawTickRTH + 1) - 1;
+        rawSumETH = (rawSumETH[1] + 1) * (rawTickETH + 1) - 1;
+        rawSum    = (rawSum[1] + 1) * (rawTick + 1) - 1;
     }
     else {
-        rawSumETH = if Scale == Scale.Relative
-            then rawSumETH[1] * (changeETH + 1)
-            else rawSumETH[1] + changeETH;
+        rawSumRTH = rawSumRTH[1] + rawTickRTH;
+        rawSumETH = rawSumETH[1] + rawTickETH;
+        rawSum    = rawSum[1] + rawTick;
     }
 
-    # Relative summation
-    def change;
+    # Filters
     def sumRTH;
     def sumETH;
-    def summation;
-    if Scale == Scale.Relative {
-        change    = (changeRTH + 1) / (changeETH + 1) - 1;
-        summation = (rawSumRTH + 1) / (rawSumETH + 1) - 1;
-        sumRTH    = rawSumRTH - 1;
-        sumETH    = rawSumETH - 1;
+    def sum;
+    def tick;
+    if !Chart().isValidBar or !isActivePeriod {
+        sumRTH  = Double.NaN;
+        sumETH  = Double.NaN;
+        sum     = Double.NaN;
+        tick    = Double.NaN;
     }
     else {
-        change    = changeRTH - changeETH;
-        summation = rawSumRTH - rawSumETH;
-        sumRTH    = rawSumRTH;
-        sumETH    = rawSumETH;
+        sumRTH  = Filters(rawSumRTH, Oscillation, Smoothing);
+        sumETH  = Filters(rawSumETH, Oscillation, Smoothing);
+        sum     = Filters(rawSum, Oscillation, Smoothing);
+        tick    = Filters(rawTick, Oscillation, Smoothing);
     }
 ###
 
@@ -359,9 +334,27 @@ declare real_size;
     DefineGlobalColor("Separator",  CreateColor(32, 32, 32));
     DefineGlobalColor("Background", CreateColor(12, 12, 12));
 
-    # Summation
-    plot S = summation;
-    S.SetHiding(Display != Display.Summation);
+    # Tick
+    plot T = tick;
+    T.SetHiding(Display != Display.Tick);
+    T.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
+    T.DefineColor("Up", CreateColor(230, 205, 80));
+    T.DefineColor("Down", CreateColor(77, 166, 255));
+    T.DefineColor("Neutral", Color.DARK_GRAY);
+    T.SetDefaultColor(T.Color("Neutral"));
+    T.AssignValueColor(
+        if isNewPeriod and isActivePeriod[1]
+            then GlobalColor("Background")
+        else if tick > 0
+            then T.Color("Up")
+        else if tick < 0
+            then T.Color("Down")
+            else T.Color("Neutral")
+    );
+
+    # Cumulative
+    plot S = sum;
+    S.SetHiding(Display == Display.Tick or Mode != Mode.Combined);
     S.DefineColor("Up", CreateColor(230, 205, 80));
     S.DefineColor("Down", CreateColor(77, 166, 255));
     S.DefineColor("Neutral", Color.DARK_GRAY);
@@ -369,47 +362,31 @@ declare real_size;
     S.AssignValueColor(
         if isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
-        else if summation > 0
+        else if sum > 0
             then S.Color("Up")
-        else if summation < 0
+        else if sum < 0
             then S.Color("Down")
             else S.Color("Neutral")
     );
 
-    # Difference/ratio
-    plot Ratio = change;
-    Ratio.SetHiding(Display != Display.Ratio);
-    Ratio.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
-    Ratio.DefineColor("Up", CreateColor(230, 205, 80));
-    Ratio.DefineColor("Down", CreateColor(77, 166, 255));
-    Ratio.DefineColor("Neutral", Color.DARK_GRAY);
-    Ratio.SetDefaultColor(Ratio.Color("Neutral"));
-    Ratio.AssignValueColor(
-        if change > 0
-            then Ratio.Color("Up")
-        else if change < 0
-            then Ratio.Color("Down")
-            else Ratio.Color("Neutral")
-    );
-
-    # RTH
+    # Cumulative RTH
     plot RTH = sumRTH;
-    RTH.SetHiding(Display != Display.Overlay and Display != Display.Cloud);
+    RTH.SetHiding(Display == Display.Tick or Mode == Mode.Combined);
     RTH.DefineColor("Value", CreateColor(230, 205, 80));
     RTH.SetDefaultColor(RTH.Color("Value"));
     RTH.AssignValueColor(
-        if isNewPeriod and Display != Display.Cloud
+        if isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
             else RTH.Color("Value")
     );
 
-    # ETH
+    # Cumulative ETH
     plot ETH = sumETH;
-    ETH.SetHiding(Display != Display.Overlay and Display != Display.Cloud);
+    ETH.SetHiding(Display == Display.Tick or Mode == Mode.Combined);
     ETH.DefineColor("Value", CreateColor(77, 166, 255));
     ETH.SetDefaultColor(ETH.Color("Value"));
     ETH.AssignValueColor(
-        if isNewPeriod and Display != Display.Cloud
+        if isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
             else ETH.Color("Value")
     );
@@ -418,17 +395,22 @@ declare real_size;
     def cloudRTH = sumRTH;
     def cloudETH = sumETH;
     AddCloud(
-        data1  = if Display == Display.Cloud then cloudRTH else Double.NaN,
-        data2  = if Display == Display.Cloud then cloudETH else Double.NaN,
+        data1 = if Mode == Mode.Cloud and Display != Display.Tick
+            then cloudRTH
+            else Double.NaN,
+        data2 = if Mode == Mode.Cloud and Display != Display.Tick
+            then cloudETH
+            else Double.NaN,
         color1 = RTH.Color("Value"),
         color2 = ETH.Color("Value")
     );
 
-    # Mid
-    plot Mid = 0;
-    Mid.SetDefaultColor(GlobalColor("Line"));
-    Mid.HideBubble();
-    Mid.HideTitle();
+    # Line
+    plot N = 0;
+    N.SetDefaultColor(GlobalColor("Line"));
+    N.HideBubble();
+    N.HideTitle();
+    N.Hide();
 
     # Separators
     AddVerticalLine(

@@ -182,7 +182,6 @@ declare lower;
 
     input Quote = {
         default "Close",
-        "RTH",
         "Open",
         "High",
         "Low",
@@ -236,75 +235,53 @@ declare lower;
     }
 
     # Lookup
-    def rawUpOpen;
-    def rawDnOpen;
-    def rawUpClose;
-    def rawDnClose;
+    def rawUp;
+    def rawDn;
     def rawAll;
     switch (Market) {
         case "ALLUSA":
-            rawUpOpen  = open("$ADVUS");
-            rawDnOpen  = open("$DECLUS");
-            rawUpClose = Fundamental(type, "$ADVUS");
-            rawDnClose = Fundamental(type, "$DECLUS");
-            rawAll     = close("$UNCHUS") + close("$ADVUS") + close("$DECLUS");
+            rawUp  = Fundamental(type, "$ADVUS");
+            rawDn  = Fundamental(type, "$DECLUS");
+            rawAll = close("$UNCHUS") + close("$ADVUS") + close("$DECLUS");
         case "NYSE":
-            rawUpOpen  = open("$ADVN");
-            rawDnOpen  = open("$DECN");
-            rawUpClose = Fundamental(type, "$ADVN");
-            rawDnClose = Fundamental(type, "$DECN");
-            rawAll     = close("$UNCN") + close("$ADVN") + close("$DECN");
+            rawUp  = Fundamental(type, "$ADVN");
+            rawDn  = Fundamental(type, "$DECN");
+            rawAll = close("$UNCN") + close("$ADVN") + close("$DECN");
         case "NASDAQ":
-            rawUpOpen  = open("$ADVN/Q");
-            rawDnOpen  = open("$DECN/Q");
-            rawUpClose = Fundamental(type, "$ADVN/Q");
-            rawDnClose = Fundamental(type, "$DECN/Q");
-            rawAll     = close("$UNCN/Q") + close("$ADVN/Q") + close("$DECN/Q");
+            rawUp  = Fundamental(type, "$ADVN/Q");
+            rawDn  = Fundamental(type, "$DECN/Q");
+            rawAll = close("$UNCN/Q") + close("$ADVN/Q") + close("$DECN/Q");
         case "S&P 500":
-            rawUpOpen  = open("$ADVSP");
-            rawDnOpen  = open("$DECLSP");
-            rawUpClose = Fundamental(type, "$ADVSP");
-            rawDnClose = Fundamental(type, "$DECLSP");
-            rawAll     = close("$UNCHSP") + close("$ADVSP") + close("$DECLSP");
+            rawUp  = Fundamental(type, "$ADVSP");
+            rawDn  = Fundamental(type, "$DECLSP");
+            rawAll = close("$UNCHSP") + close("$ADVSP") + close("$DECLSP");
         case "NASDAQ 100":
-            rawUpOpen  = open("$ADVND");
-            rawDnOpen  = open("$DECLND");
-            rawUpClose = Fundamental(type, "$ADVND");
-            rawDnClose = Fundamental(type, "$DECLND");
-            rawAll     = close("$UNCHND") + close("$ADVND") + close("$DECLND");
+            rawUp  = Fundamental(type, "$ADVND");
+            rawDn  = Fundamental(type, "$DECLND");
+            rawAll = close("$UNCHND") + close("$ADVND") + close("$DECLND");
         case "RUSSELL 2000":
-            rawUpOpen  = open("$ADVRL");
-            rawDnOpen  = open("$DECLRL");
-            rawUpClose = Fundamental(type, "$ADVRL");
-            rawDnClose = Fundamental(type, "$DECLRL");
-            rawAll     =  close("$UNCHRL") + close("$ADVRL") + close("$DECLRL");
+            rawUp  = Fundamental(type, "$ADVRL");
+            rawDn  = Fundamental(type, "$DECLRL");
+            rawAll =  close("$UNCHRL") + close("$ADVRL") + close("$DECLRL");
         case "DJIA":
-            rawUpOpen  = open("$ADVI");
-            rawDnOpen  = open("$DECLI");
-            rawUpClose = Fundamental(type, "$ADVI");
-            rawDnClose = Fundamental(type, "$DECLI");
-            rawAll     = close("$UNCHI") + close("$ADVI") + close("$DECLI");
+            rawUp  = Fundamental(type, "$ADVI");
+            rawDn  = Fundamental(type, "$DECLI");
+            rawAll = close("$UNCHI") + close("$ADVI") + close("$DECLI");
     }
 
     # Sanitize
-    def upOpen;
-    def dnOpen;
-    def upClose;
-    def dnClose;
+    def up;
+    def dn;
     def all;
     if Sanitize {
-        upOpen   = Value(rawUpOpen);
-        dnOpen   = Value(rawDnOpen);
-        upClose  = Value(rawUpClose);
-        dnClose  = Value(rawDnClose);
-        all      = Value(rawAll);
+        up  = Value(rawUp);
+        dn  = Value(rawDn);
+        all = Value(rawAll);
     }
     else {
-        upOpen   = rawUpOpen;
-        dnOpen   = rawDnOpen;
-        upClose  = rawUpClose;
-        dnClose  = rawDnClose;
-        all      = rawAll;
+        up  = rawUp;
+        dn  = rawDn;
+        all = rawAll;
     }
 ###
 
@@ -312,18 +289,6 @@ declare lower;
 ### CALCULATIONS ###
     def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
     def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
-
-    # RTH
-    def up;
-    def dn;
-    if Quote == Quote.RTH and !Chart().isIntradayBar and !Chart().isMultiDay {
-        up  = upClose  - upOpen;
-        dn  = dnClose  - dnOpen;
-    }
-    else {
-        up  = upClose;
-        dn  = dnClose;
-    }
 
     # Tick
     def tickUp;
@@ -381,13 +346,8 @@ declare lower;
     UD.DefineColor("Down", Color.DOWNTICK);
     UD.DefineColor("Neutral", Color.DARK_GRAY);
     UD.SetDefaultColor(UD.Color("Neutral"));
-    UD.SetPaintingStrategy(
-        if Display == Display.Tick
-            then PaintingStrategy.HISTOGRAM
-            else PaintingStrategy.LINE
-    );
     UD.AssignValueColor(
-        if Display == Display.Cumulative and isNewPeriod and isActivePeriod[1]
+        if isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
         else if UD > neutral
             then UD.Color("Up")

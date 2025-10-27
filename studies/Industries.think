@@ -214,109 +214,6 @@ declare lower;
         plot P = isLatest;
         P.hide();
     }
-
-    script GetData {
-        input Ticker = "";
-        input Quote  = "Close";
-        input Scale  = "Logarithmic";
-
-        def type;
-        if Quote == "Open" {
-            type = FundamentalType.OPEN;
-        }
-        else if Quote == "High" {
-            type = FundamentalType.HIGH;
-        }
-        else if Quote == "Low" {
-            type = FundamentalType.LOW;
-        }
-        else if Quote == "HL2" {
-            type = FundamentalType.HL2;
-        }
-        else if Quote == "HLC3" {
-            type = FundamentalType.HLC3;
-        }
-        else if Quote == "OHLC4" {
-            type = FundamentalType.OHLC4;
-        }
-        else {
-            type = FundamentalType.CLOSE;
-        }
-
-        def raw = Fundamental(type, Ticker);
-
-        def value;
-        if Scale == "Logarithmic" {
-            value = Log(raw);
-        }
-        else {
-            value = raw;
-        }
-
-        plot P = value;
-        P.hide();
-    }
-
-    script GetChange {
-        input Value       = Double.NaN;
-        input Offset      = Double.NaN;
-        input Scale       = "Logarithmic";
-        input IsNewPeriod = no;
-        input IsActive    = no;
-        input IsLatest    = no;
-        input EndOnly     = no;
-
-        def val = Value;
-        def off = Offset;
-
-        def change;
-        if !Chart().isValidBar or !IsActive or !IsLatest and EndOnly {
-            change = Double.NaN;
-        }
-        else if isNewPeriod and Scale == "Relative" {
-            change = val / val[1] - off - 1;
-        }
-        else if isNewPeriod {
-            change = val - val[1] - off;
-        }
-        else if Scale == "Relative" {
-            change = (change[1] + 1) * (val / val[1] - off) - 1;
-        }
-        else {
-            change = change[1] + val - val[1] - off;
-        }
-
-        plot P = change;
-        P.hide();
-    }
-
-    script GetHide {
-        input Change      = Double.NaN;
-        input COffset     = Double.NaN;
-        input Perf        = "";
-        input Sector      = "All";
-        input SectorMatch = no;
-
-        def chg = Change;
-        def off = COffset;
-
-        def value;
-        if Sector != "All" and !SectorMatch {
-            value = yes;
-        }
-        else if Chart().isStart and Perf == "Leading" {
-            value = GetValue(chg < off, Chart().endOffset);
-        }
-        else if Chart().isStart and Perf == "Lagging" {
-            value = GetValue(chg > off, Chart().endOffset);
-        }
-        else {
-            value = value[1];
-        }
-
-        plot P = value;
-        P.hide();
-    }
 ###
 
 
@@ -364,11 +261,6 @@ declare lower;
         "Overlay"
     };
 
-    input Scale = {
-        default "Logarithmic",
-        "Relative"
-    };
-
     input Period = {
         default "Chart",
         "Daily",
@@ -391,236 +283,446 @@ declare lower;
 
 
 ### LOOKUPS ###
-    def value000000 = GetData("$SP" + Cap, Quote, Scale);
-    def value101010 = GetData("$SP" + Cap + "#101010", Quote, Scale);
-    def value101020 = GetData("$SP" + Cap + "#101020", Quote, Scale);
-    def value151010 = GetData("$SP" + Cap + "#151010", Quote, Scale);
-    def value151020 = GetData("$SP" + Cap + "#151020", Quote, Scale);
-    def value151030 = GetData("$SP" + Cap + "#151030", Quote, Scale);
-    def value151040 = GetData("$SP" + Cap + "#151040", Quote, Scale);
-    def value201010 = GetData("$SP" + Cap + "#201010", Quote, Scale);
-    def value201020 = GetData("$SP" + Cap + "#201020", Quote, Scale);
-    def value201030 = GetData("$SP" + Cap + "#201030", Quote, Scale);
-    def value201040 = GetData("$SP" + Cap + "#201040", Quote, Scale);
-    def value201050 = GetData("$SP" + Cap + "#201050", Quote, Scale);
-    def value201060 = GetData("$SP" + Cap + "#201060", Quote, Scale);
-    def value201070 = GetData("$SP" + Cap + "#201070", Quote, Scale);
-    def value202010 = GetData("$SP" + Cap + "#202010", Quote, Scale);
-    def value202020 = GetData("$SP" + Cap + "#202020", Quote, Scale);
-    def value203010 = GetData("$SP" + Cap + "#203010", Quote, Scale);
-    def value203020 = GetData("$SP" + Cap + "#203020", Quote, Scale);
-    def value203040 = GetData("$SP" + Cap + "#203040", Quote, Scale);
-    def value251010 = GetData("$SP" + Cap + "#251010", Quote, Scale);
-    def value251020 = GetData("$SP" + Cap + "#251020", Quote, Scale);
-    def value252010 = GetData("$SP" + Cap + "#252010", Quote, Scale);
-    def value252020 = GetData("$SP" + Cap + "#252020", Quote, Scale);
-    def value252030 = GetData("$SP" + Cap + "#252030", Quote, Scale);
-    def value253010 = GetData("$SP" + Cap + "#253010", Quote, Scale);
-    def value255010 = GetData("$SP" + Cap + "#255010", Quote, Scale);
-    def value255030 = GetData("$SP" + Cap + "#255030", Quote, Scale);
-    def value255040 = GetData("$SP" + Cap + "#255040", Quote, Scale);
-    def value301010 = GetData("$SP" + Cap + "#301010", Quote, Scale);
-    def value302010 = GetData("$SP" + Cap + "#302010", Quote, Scale);
-    def value302020 = GetData("$SP" + Cap + "#302020", Quote, Scale);
-    def value302030 = GetData("$SP" + Cap + "#302030", Quote, Scale);
-    def value303010 = GetData("$SP" + Cap + "#303010", Quote, Scale);
-    def value303020 = GetData("$SP" + Cap + "#303020", Quote, Scale);
-    def value351010 = GetData("$SP" + Cap + "#351010", Quote, Scale);
-    def value351020 = GetData("$SP" + Cap + "#351020", Quote, Scale);
-    def value352010 = GetData("$SP" + Cap + "#352010", Quote, Scale);
-    def value352020 = GetData("$SP" + Cap + "#352020", Quote, Scale);
-    def value352030 = GetData("$SP" + Cap + "#352030", Quote, Scale);
-    def value401010 = GetData("$SP" + Cap + "#401010", Quote, Scale);
-    def value402010 = GetData("$SP" + Cap + "#402010", Quote, Scale);
-    def value402020 = GetData("$SP" + Cap + "#402020", Quote, Scale);
-    def value402030 = GetData("$SP" + Cap + "#402030", Quote, Scale);
-    def value403010 = GetData("$SP" + Cap + "#403010", Quote, Scale);
-    def value451020 = GetData("$SP" + Cap + "#451020", Quote, Scale);
-    def value451030 = GetData("$SP" + Cap + "#451030", Quote, Scale);
-    def value452010 = GetData("$SP" + Cap + "#452010", Quote, Scale);
-    def value452020 = GetData("$SP" + Cap + "#452020", Quote, Scale);
-    def value452030 = GetData("$SP" + Cap + "#452030", Quote, Scale);
-    def value453010 = GetData("$SP" + Cap + "#453010", Quote, Scale);
-    def value501010 = GetData("$SP" + Cap + "#501010", Quote, Scale);
-    def value501020 = GetData("$SP" + Cap + "#501020", Quote, Scale);
-    def value502010 = GetData("$SP" + Cap + "#502010", Quote, Scale);
-    def value502020 = GetData("$SP" + Cap + "#502020", Quote, Scale);
-    def value502030 = GetData("$SP" + Cap + "#502030", Quote, Scale);
-    def value551010 = GetData("$SP" + Cap + "#551010", Quote, Scale);
-    def value551020 = GetData("$SP" + Cap + "#551020", Quote, Scale);
-    def value551030 = GetData("$SP" + Cap + "#551030", Quote, Scale);
-    def value551040 = GetData("$SP" + Cap + "#551040", Quote, Scale);
-    def value551050 = GetData("$SP" + Cap + "#551050", Quote, Scale);
-    def value601025 = GetData("$SP" + Cap + "#601025", Quote, Scale);
-    def value601030 = GetData("$SP" + Cap + "#601030", Quote, Scale);
-    def value601040 = GetData("$SP" + Cap + "#601040", Quote, Scale);
-    def value601050 = GetData("$SP" + Cap + "#601050", Quote, Scale);
-    def value601060 = GetData("$SP" + Cap + "#601060", Quote, Scale);
-    def value601070 = GetData("$SP" + Cap + "#601070", Quote, Scale);
-    def value601080 = GetData("$SP" + Cap + "#601080", Quote, Scale);
-    def value602010 = GetData("$SP" + Cap + "#602010", Quote, Scale);
+    def type;
+    switch (Quote) {
+        case "Open"  : type = FundamentalType.OPEN;
+        case "High"  : type = FundamentalType.HIGH;
+        case "Low"   : type = FundamentalType.LOW;
+        case "HL2"   : type = FundamentalType.HL2;
+        case "HLC3"  : type = FundamentalType.HLC3;
+        case "OHLC4" : type = FundamentalType.OHLC4;
+        default      : type = FundamentalType.CLOSE;
+    }
+
+    def value000000 = Log(Fundamental(type, "$SP" + Cap));
+    def value101010 = Log(Fundamental(type, "$SP" + Cap + "#101010"));
+    def value101020 = Log(Fundamental(type, "$SP" + Cap + "#101020"));
+    def value151010 = Log(Fundamental(type, "$SP" + Cap + "#151010"));
+    def value151020 = Log(Fundamental(type, "$SP" + Cap + "#151020"));
+    def value151030 = Log(Fundamental(type, "$SP" + Cap + "#151030"));
+    def value151040 = Log(Fundamental(type, "$SP" + Cap + "#151040"));
+    def value201010 = Log(Fundamental(type, "$SP" + Cap + "#201010"));
+    def value201020 = Log(Fundamental(type, "$SP" + Cap + "#201020"));
+    def value201030 = Log(Fundamental(type, "$SP" + Cap + "#201030"));
+    def value201040 = Log(Fundamental(type, "$SP" + Cap + "#201040"));
+    def value201050 = Log(Fundamental(type, "$SP" + Cap + "#201050"));
+    def value201060 = Log(Fundamental(type, "$SP" + Cap + "#201060"));
+    def value201070 = Log(Fundamental(type, "$SP" + Cap + "#201070"));
+    def value202010 = Log(Fundamental(type, "$SP" + Cap + "#202010"));
+    def value202020 = Log(Fundamental(type, "$SP" + Cap + "#202020"));
+    def value203010 = Log(Fundamental(type, "$SP" + Cap + "#203010"));
+    def value203020 = Log(Fundamental(type, "$SP" + Cap + "#203020"));
+    def value203040 = Log(Fundamental(type, "$SP" + Cap + "#203040"));
+    def value251010 = Log(Fundamental(type, "$SP" + Cap + "#251010"));
+    def value251020 = Log(Fundamental(type, "$SP" + Cap + "#251020"));
+    def value252010 = Log(Fundamental(type, "$SP" + Cap + "#252010"));
+    def value252020 = Log(Fundamental(type, "$SP" + Cap + "#252020"));
+    def value252030 = Log(Fundamental(type, "$SP" + Cap + "#252030"));
+    def value253010 = Log(Fundamental(type, "$SP" + Cap + "#253010"));
+    def value255010 = Log(Fundamental(type, "$SP" + Cap + "#255010"));
+    def value255030 = Log(Fundamental(type, "$SP" + Cap + "#255030"));
+    def value255040 = Log(Fundamental(type, "$SP" + Cap + "#255040"));
+    def value301010 = Log(Fundamental(type, "$SP" + Cap + "#301010"));
+    def value302010 = Log(Fundamental(type, "$SP" + Cap + "#302010"));
+    def value302020 = Log(Fundamental(type, "$SP" + Cap + "#302020"));
+    def value302030 = Log(Fundamental(type, "$SP" + Cap + "#302030"));
+    def value303010 = Log(Fundamental(type, "$SP" + Cap + "#303010"));
+    def value303020 = Log(Fundamental(type, "$SP" + Cap + "#303020"));
+    def value351010 = Log(Fundamental(type, "$SP" + Cap + "#351010"));
+    def value351020 = Log(Fundamental(type, "$SP" + Cap + "#351020"));
+    def value352010 = Log(Fundamental(type, "$SP" + Cap + "#352010"));
+    def value352020 = Log(Fundamental(type, "$SP" + Cap + "#352020"));
+    def value352030 = Log(Fundamental(type, "$SP" + Cap + "#352030"));
+    def value401010 = Log(Fundamental(type, "$SP" + Cap + "#401010"));
+    def value402010 = Log(Fundamental(type, "$SP" + Cap + "#402010"));
+    def value402020 = Log(Fundamental(type, "$SP" + Cap + "#402020"));
+    def value402030 = Log(Fundamental(type, "$SP" + Cap + "#402030"));
+    def value403010 = Log(Fundamental(type, "$SP" + Cap + "#403010"));
+    def value451020 = Log(Fundamental(type, "$SP" + Cap + "#451020"));
+    def value451030 = Log(Fundamental(type, "$SP" + Cap + "#451030"));
+    def value452010 = Log(Fundamental(type, "$SP" + Cap + "#452010"));
+    def value452020 = Log(Fundamental(type, "$SP" + Cap + "#452020"));
+    def value452030 = Log(Fundamental(type, "$SP" + Cap + "#452030"));
+    def value453010 = Log(Fundamental(type, "$SP" + Cap + "#453010"));
+    def value501010 = Log(Fundamental(type, "$SP" + Cap + "#501010"));
+    def value501020 = Log(Fundamental(type, "$SP" + Cap + "#501020"));
+    def value502010 = Log(Fundamental(type, "$SP" + Cap + "#502010"));
+    def value502020 = Log(Fundamental(type, "$SP" + Cap + "#502020"));
+    def value502030 = Log(Fundamental(type, "$SP" + Cap + "#502030"));
+    def value551010 = Log(Fundamental(type, "$SP" + Cap + "#551010"));
+    def value551020 = Log(Fundamental(type, "$SP" + Cap + "#551020"));
+    def value551030 = Log(Fundamental(type, "$SP" + Cap + "#551030"));
+    def value551040 = Log(Fundamental(type, "$SP" + Cap + "#551040"));
+    def value551050 = Log(Fundamental(type, "$SP" + Cap + "#551050"));
+    def value601025 = Log(Fundamental(type, "$SP" + Cap + "#601025"));
+    def value601030 = Log(Fundamental(type, "$SP" + Cap + "#601030"));
+    def value601040 = Log(Fundamental(type, "$SP" + Cap + "#601040"));
+    def value601050 = Log(Fundamental(type, "$SP" + Cap + "#601050"));
+    def value601060 = Log(Fundamental(type, "$SP" + Cap + "#601060"));
+    def value601070 = Log(Fundamental(type, "$SP" + Cap + "#601070"));
+    def value601080 = Log(Fundamental(type, "$SP" + Cap + "#601080"));
+    def value602010 = Log(Fundamental(type, "$SP" + Cap + "#602010"));
 ###
 
 
 ### CALCULATIONS ###
-    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
     def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
     def isLatestPeriod = LatestPeriod(Period, SinceDate, CandlesAgo);
+    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
     def showBubbles    = isActivePeriod and isNewPeriod[-1] or Chart().isEnd;
+    def isStartBar     = Chart().isStart;
+    def endOffset      = Chart().endOffset;
 
-    # S&P
-    def offset;
+    def change000000;
+    def offset000000;
+    def change101010;
+    def change101020;
+    def change151010;
+    def change151020;
+    def change151030;
+    def change151040;
+    def change201010;
+    def change201020;
+    def change201030;
+    def change201040;
+    def change201050;
+    def change201060;
+    def change201070;
+    def change202010;
+    def change202020;
+    def change203010;
+    def change203020;
+    def change203040;
+    def change251010;
+    def change251020;
+    def change252010;
+    def change252020;
+    def change252030;
+    def change253010;
+    def change255010;
+    def change255030;
+    def change255040;
+    def change301010;
+    def change302010;
+    def change302020;
+    def change302030;
+    def change303010;
+    def change303020;
+    def change351010;
+    def change351020;
+    def change352010;
+    def change352020;
+    def change352030;
+    def change401010;
+    def change402010;
+    def change402020;
+    def change402030;
+    def change403010;
+    def change451020;
+    def change451030;
+    def change452010;
+    def change452020;
+    def change452030;
+    def change453010;
+    def change501010;
+    def change501020;
+    def change502010;
+    def change502020;
+    def change502030;
+    def change551010;
+    def change551020;
+    def change551030;
+    def change551040;
+    def change551050;
+    def change601025;
+    def change601030;
+    def change601040;
+    def change601050;
+    def change601060;
+    def change601070;
+    def change601080;
+    def change602010;
     if !Chart().isValidBar or !isActivePeriod or EndPeriodOnly and !isLatestPeriod {
-        offset = Double.NaN;
+        change000000 = Double.NaN;
+        offset000000 = Double.NaN;
+        change101010 = Double.NaN;
+        change101020 = Double.NaN;
+        change151010 = Double.NaN;
+        change151020 = Double.NaN;
+        change151030 = Double.NaN;
+        change151040 = Double.NaN;
+        change201010 = Double.NaN;
+        change201020 = Double.NaN;
+        change201030 = Double.NaN;
+        change201040 = Double.NaN;
+        change201050 = Double.NaN;
+        change201060 = Double.NaN;
+        change201070 = Double.NaN;
+        change202010 = Double.NaN;
+        change202020 = Double.NaN;
+        change203010 = Double.NaN;
+        change203020 = Double.NaN;
+        change203040 = Double.NaN;
+        change251010 = Double.NaN;
+        change251020 = Double.NaN;
+        change252010 = Double.NaN;
+        change252020 = Double.NaN;
+        change252030 = Double.NaN;
+        change253010 = Double.NaN;
+        change255010 = Double.NaN;
+        change255030 = Double.NaN;
+        change255040 = Double.NaN;
+        change301010 = Double.NaN;
+        change302010 = Double.NaN;
+        change302020 = Double.NaN;
+        change302030 = Double.NaN;
+        change303010 = Double.NaN;
+        change303020 = Double.NaN;
+        change351010 = Double.NaN;
+        change351020 = Double.NaN;
+        change352010 = Double.NaN;
+        change352020 = Double.NaN;
+        change352030 = Double.NaN;
+        change401010 = Double.NaN;
+        change402010 = Double.NaN;
+        change402020 = Double.NaN;
+        change402030 = Double.NaN;
+        change403010 = Double.NaN;
+        change451020 = Double.NaN;
+        change451030 = Double.NaN;
+        change452010 = Double.NaN;
+        change452020 = Double.NaN;
+        change452030 = Double.NaN;
+        change453010 = Double.NaN;
+        change501010 = Double.NaN;
+        change501020 = Double.NaN;
+        change502010 = Double.NaN;
+        change502020 = Double.NaN;
+        change502030 = Double.NaN;
+        change551010 = Double.NaN;
+        change551020 = Double.NaN;
+        change551030 = Double.NaN;
+        change551040 = Double.NaN;
+        change551050 = Double.NaN;
+        change601025 = Double.NaN;
+        change601030 = Double.NaN;
+        change601040 = Double.NaN;
+        change601050 = Double.NaN;
+        change601060 = Double.NaN;
+        change601070 = Double.NaN;
+        change601080 = Double.NaN;
+        change602010 = Double.NaN;
     }
-    else if Display == Display.Ratio and Scale == Scale.Relative {
-        offset = value000000 / value000000[1] - 1;
-    }
-    else if Display == Display.Ratio {
-        offset = value000000 - value000000[1];
+    else if isNewPeriod {
+        offset000000 = if Display == Display.Ratio then value000000 - value000000[1] else 0;
+        change000000 = value000000 - value000000[1] - offset000000;
+        change101010 = value101010 - value101010[1] - offset000000;
+        change101020 = value101020 - value101020[1] - offset000000;
+        change151010 = value151010 - value151010[1] - offset000000;
+        change151020 = value151020 - value151020[1] - offset000000;
+        change151030 = value151030 - value151030[1] - offset000000;
+        change151040 = value151040 - value151040[1] - offset000000;
+        change201010 = value201010 - value201010[1] - offset000000;
+        change201020 = value201020 - value201020[1] - offset000000;
+        change201030 = value201030 - value201030[1] - offset000000;
+        change201040 = value201040 - value201040[1] - offset000000;
+        change201050 = value201050 - value201050[1] - offset000000;
+        change201060 = value201060 - value201060[1] - offset000000;
+        change201070 = value201070 - value201070[1] - offset000000;
+        change202010 = value202010 - value202010[1] - offset000000;
+        change202020 = value202020 - value202020[1] - offset000000;
+        change203010 = value203010 - value203010[1] - offset000000;
+        change203020 = value203020 - value203020[1] - offset000000;
+        change203040 = value203040 - value203040[1] - offset000000;
+        change251010 = value251010 - value251010[1] - offset000000;
+        change251020 = value251020 - value251020[1] - offset000000;
+        change252010 = value252010 - value252010[1] - offset000000;
+        change252020 = value252020 - value252020[1] - offset000000;
+        change252030 = value252030 - value252030[1] - offset000000;
+        change253010 = value253010 - value253010[1] - offset000000;
+        change255010 = value255010 - value255010[1] - offset000000;
+        change255030 = value255030 - value255030[1] - offset000000;
+        change255040 = value255040 - value255040[1] - offset000000;
+        change301010 = value301010 - value301010[1] - offset000000;
+        change302010 = value302010 - value302010[1] - offset000000;
+        change302020 = value302020 - value302020[1] - offset000000;
+        change302030 = value302030 - value302030[1] - offset000000;
+        change303010 = value303010 - value303010[1] - offset000000;
+        change303020 = value303020 - value303020[1] - offset000000;
+        change351010 = value351010 - value351010[1] - offset000000;
+        change351020 = value351020 - value351020[1] - offset000000;
+        change352010 = value352010 - value352010[1] - offset000000;
+        change352020 = value352020 - value352020[1] - offset000000;
+        change352030 = value352030 - value352030[1] - offset000000;
+        change401010 = value401010 - value401010[1] - offset000000;
+        change402010 = value402010 - value402010[1] - offset000000;
+        change402020 = value402020 - value402020[1] - offset000000;
+        change402030 = value402030 - value402030[1] - offset000000;
+        change403010 = value403010 - value403010[1] - offset000000;
+        change451020 = value451020 - value451020[1] - offset000000;
+        change451030 = value451030 - value451030[1] - offset000000;
+        change452010 = value452010 - value452010[1] - offset000000;
+        change452020 = value452020 - value452020[1] - offset000000;
+        change452030 = value452030 - value452030[1] - offset000000;
+        change453010 = value453010 - value453010[1] - offset000000;
+        change501010 = value501010 - value501010[1] - offset000000;
+        change501020 = value501020 - value501020[1] - offset000000;
+        change502010 = value502010 - value502010[1] - offset000000;
+        change502020 = value502020 - value502020[1] - offset000000;
+        change502030 = value502030 - value502030[1] - offset000000;
+        change551010 = value551010 - value551010[1] - offset000000;
+        change551020 = value551020 - value551020[1] - offset000000;
+        change551030 = value551030 - value551030[1] - offset000000;
+        change551040 = value551040 - value551040[1] - offset000000;
+        change551050 = value551050 - value551050[1] - offset000000;
+        change601025 = value601025 - value601025[1] - offset000000;
+        change601030 = value601030 - value601030[1] - offset000000;
+        change601040 = value601040 - value601040[1] - offset000000;
+        change601050 = value601050 - value601050[1] - offset000000;
+        change601060 = value601060 - value601060[1] - offset000000;
+        change601070 = value601070 - value601070[1] - offset000000;
+        change601080 = value601080 - value601080[1] - offset000000;
+        change602010 = value602010 - value602010[1] - offset000000;
     }
     else {
-        offset = 0;
+        offset000000 = if Display == Display.Ratio then value000000 - value000000[1] else 0;
+        change000000 = change000000[1] + value000000 - value000000[1] - offset000000;
+        change101010 = change101010[1] + value101010 - value101010[1] - offset000000;
+        change101020 = change101020[1] + value101020 - value101020[1] - offset000000;
+        change151010 = change151010[1] + value151010 - value151010[1] - offset000000;
+        change151020 = change151020[1] + value151020 - value151020[1] - offset000000;
+        change151030 = change151030[1] + value151030 - value151030[1] - offset000000;
+        change151040 = change151040[1] + value151040 - value151040[1] - offset000000;
+        change201010 = change201010[1] + value201010 - value201010[1] - offset000000;
+        change201020 = change201020[1] + value201020 - value201020[1] - offset000000;
+        change201030 = change201030[1] + value201030 - value201030[1] - offset000000;
+        change201040 = change201040[1] + value201040 - value201040[1] - offset000000;
+        change201050 = change201050[1] + value201050 - value201050[1] - offset000000;
+        change201060 = change201060[1] + value201060 - value201060[1] - offset000000;
+        change201070 = change201070[1] + value201070 - value201070[1] - offset000000;
+        change202010 = change202010[1] + value202010 - value202010[1] - offset000000;
+        change202020 = change202020[1] + value202020 - value202020[1] - offset000000;
+        change203010 = change203010[1] + value203010 - value203010[1] - offset000000;
+        change203020 = change203020[1] + value203020 - value203020[1] - offset000000;
+        change203040 = change203040[1] + value203040 - value203040[1] - offset000000;
+        change251010 = change251010[1] + value251010 - value251010[1] - offset000000;
+        change251020 = change251020[1] + value251020 - value251020[1] - offset000000;
+        change252010 = change252010[1] + value252010 - value252010[1] - offset000000;
+        change252020 = change252020[1] + value252020 - value252020[1] - offset000000;
+        change252030 = change252030[1] + value252030 - value252030[1] - offset000000;
+        change253010 = change253010[1] + value253010 - value253010[1] - offset000000;
+        change255010 = change255010[1] + value255010 - value255010[1] - offset000000;
+        change255030 = change255030[1] + value255030 - value255030[1] - offset000000;
+        change255040 = change255040[1] + value255040 - value255040[1] - offset000000;
+        change301010 = change301010[1] + value301010 - value301010[1] - offset000000;
+        change302010 = change302010[1] + value302010 - value302010[1] - offset000000;
+        change302020 = change302020[1] + value302020 - value302020[1] - offset000000;
+        change302030 = change302030[1] + value302030 - value302030[1] - offset000000;
+        change303010 = change303010[1] + value303010 - value303010[1] - offset000000;
+        change303020 = change303020[1] + value303020 - value303020[1] - offset000000;
+        change351010 = change351010[1] + value351010 - value351010[1] - offset000000;
+        change351020 = change351020[1] + value351020 - value351020[1] - offset000000;
+        change352010 = change352010[1] + value352010 - value352010[1] - offset000000;
+        change352020 = change352020[1] + value352020 - value352020[1] - offset000000;
+        change352030 = change352030[1] + value352030 - value352030[1] - offset000000;
+        change401010 = change401010[1] + value401010 - value401010[1] - offset000000;
+        change402010 = change402010[1] + value402010 - value402010[1] - offset000000;
+        change402020 = change402020[1] + value402020 - value402020[1] - offset000000;
+        change402030 = change402030[1] + value402030 - value402030[1] - offset000000;
+        change403010 = change403010[1] + value403010 - value403010[1] - offset000000;
+        change451020 = change451020[1] + value451020 - value451020[1] - offset000000;
+        change451030 = change451030[1] + value451030 - value451030[1] - offset000000;
+        change452010 = change452010[1] + value452010 - value452010[1] - offset000000;
+        change452020 = change452020[1] + value452020 - value452020[1] - offset000000;
+        change452030 = change452030[1] + value452030 - value452030[1] - offset000000;
+        change453010 = change453010[1] + value453010 - value453010[1] - offset000000;
+        change501010 = change501010[1] + value501010 - value501010[1] - offset000000;
+        change501020 = change501020[1] + value501020 - value501020[1] - offset000000;
+        change502010 = change502010[1] + value502010 - value502010[1] - offset000000;
+        change502020 = change502020[1] + value502020 - value502020[1] - offset000000;
+        change502030 = change502030[1] + value502030 - value502030[1] - offset000000;
+        change551010 = change551010[1] + value551010 - value551010[1] - offset000000;
+        change551020 = change551020[1] + value551020 - value551020[1] - offset000000;
+        change551030 = change551030[1] + value551030 - value551030[1] - offset000000;
+        change551040 = change551040[1] + value551040 - value551040[1] - offset000000;
+        change551050 = change551050[1] + value551050 - value551050[1] - offset000000;
+        change601025 = change601025[1] + value601025 - value601025[1] - offset000000;
+        change601030 = change601030[1] + value601030 - value601030[1] - offset000000;
+        change601040 = change601040[1] + value601040 - value601040[1] - offset000000;
+        change601050 = change601050[1] + value601050 - value601050[1] - offset000000;
+        change601060 = change601060[1] + value601060 - value601060[1] - offset000000;
+        change601070 = change601070[1] + value601070 - value601070[1] - offset000000;
+        change601080 = change601080[1] + value601080 - value601080[1] - offset000000;
+        change602010 = change602010[1] + value602010 - value602010[1] - offset000000;
     }
 
-    # Change
-    def change000000 = GetChange(value000000, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change101010 = GetChange(value101010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change101020 = GetChange(value101020, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change151010 = GetChange(value151010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change151020 = GetChange(value151020, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change151030 = GetChange(value151030, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change151040 = GetChange(value151040, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change201010 = GetChange(value201010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change201020 = GetChange(value201020, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change201030 = GetChange(value201030, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change201040 = GetChange(value201040, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change201050 = GetChange(value201050, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change201060 = GetChange(value201060, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change201070 = GetChange(value201070, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change202010 = GetChange(value202010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change202020 = GetChange(value202020, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change203010 = GetChange(value203010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change203020 = GetChange(value203020, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change203040 = GetChange(value203040, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change251010 = GetChange(value251010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change251020 = GetChange(value251020, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change252010 = GetChange(value252010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change252020 = GetChange(value252020, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change252030 = GetChange(value252030, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change253010 = GetChange(value253010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change255010 = GetChange(value255010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change255030 = GetChange(value255030, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change255040 = GetChange(value255040, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change301010 = GetChange(value301010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change302010 = GetChange(value302010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change302020 = GetChange(value302020, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change302030 = GetChange(value302030, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change303010 = GetChange(value303010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change303020 = GetChange(value303020, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change351010 = GetChange(value351010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change351020 = GetChange(value351020, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change352010 = GetChange(value352010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change352020 = GetChange(value352020, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change352030 = GetChange(value352030, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change401010 = GetChange(value401010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change402010 = GetChange(value402010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change402020 = GetChange(value402020, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change402030 = GetChange(value402030, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change403010 = GetChange(value403010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change451020 = GetChange(value451020, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change451030 = GetChange(value451030, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change452010 = GetChange(value452010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change452020 = GetChange(value452020, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change452030 = GetChange(value452030, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change453010 = GetChange(value453010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change501010 = GetChange(value501010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change501020 = GetChange(value501020, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change502010 = GetChange(value502010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change502020 = GetChange(value502020, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change502030 = GetChange(value502030, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change551010 = GetChange(value551010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change551020 = GetChange(value551020, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change551030 = GetChange(value551030, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change551040 = GetChange(value551040, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change551050 = GetChange(value551050, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change601025 = GetChange(value601025, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change601030 = GetChange(value601030, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change601040 = GetChange(value601040, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change601050 = GetChange(value601050, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change601060 = GetChange(value601060, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change601070 = GetChange(value601070, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change601080 = GetChange(value601080, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-    def change602010 = GetChange(value602010, offset, Scale, isNewPeriod, isActivePeriod, isLatestPeriod, EndPeriodOnly);
-
-    # Hide
-    def hide101010 = GetHide(change101010, change000000, Performance, Sector, Sector == Sector.Energy);
-    def hide101020 = GetHide(change101020, change000000, Performance, Sector, Sector == Sector.Energy);
-    def hide151010 = GetHide(change151010, change000000, Performance, Sector, Sector == Sector.Materials);
-    def hide151020 = GetHide(change151020, change000000, Performance, Sector, Sector == Sector.Materials);
-    def hide151030 = GetHide(change151030, change000000, Performance, Sector, Sector == Sector.Materials);
-    def hide151040 = GetHide(change151040, change000000, Performance, Sector, Sector == Sector.Materials);
-    def hide201010 = GetHide(change201010, change000000, Performance, Sector, Sector == Sector.Industrials);
-    def hide201020 = GetHide(change201020, change000000, Performance, Sector, Sector == Sector.Industrials);
-    def hide201030 = GetHide(change201030, change000000, Performance, Sector, Sector == Sector.Industrials);
-    def hide201040 = GetHide(change201040, change000000, Performance, Sector, Sector == Sector.Industrials);
-    def hide201050 = GetHide(change201050, change000000, Performance, Sector, Sector == Sector.Industrials);
-    def hide201060 = GetHide(change201060, change000000, Performance, Sector, Sector == Sector.Industrials);
-    def hide201070 = GetHide(change201070, change000000, Performance, Sector, Sector == Sector.Industrials);
-    def hide202010 = GetHide(change202010, change000000, Performance, Sector, Sector == Sector.Industrials);
-    def hide202020 = GetHide(change202020, change000000, Performance, Sector, Sector == Sector.Industrials);
-    def hide203010 = GetHide(change203010, change000000, Performance, Sector, Sector == Sector.Industrials);
-    def hide203020 = GetHide(change203020, change000000, Performance, Sector, Sector == Sector.Industrials);
-    def hide203040 = GetHide(change203040, change000000, Performance, Sector, Sector == Sector.Industrials);
-    def hide251010 = GetHide(change251010, change000000, Performance, Sector, Sector == Sector.Discretionary);
-    def hide251020 = GetHide(change251020, change000000, Performance, Sector, Sector == Sector.Discretionary);
-    def hide252010 = GetHide(change252010, change000000, Performance, Sector, Sector == Sector.Discretionary);
-    def hide252020 = GetHide(change252020, change000000, Performance, Sector, Sector == Sector.Discretionary);
-    def hide252030 = GetHide(change252030, change000000, Performance, Sector, Sector == Sector.Discretionary);
-    def hide253010 = GetHide(change253010, change000000, Performance, Sector, Sector == Sector.Discretionary);
-    def hide255010 = GetHide(change255010, change000000, Performance, Sector, Sector == Sector.Discretionary);
-    def hide255030 = GetHide(change255030, change000000, Performance, Sector, Sector == Sector.Discretionary);
-    def hide255040 = GetHide(change255040, change000000, Performance, Sector, Sector == Sector.Discretionary);
-    def hide301010 = GetHide(change301010, change000000, Performance, Sector, Sector == Sector.Staples);
-    def hide302010 = GetHide(change302010, change000000, Performance, Sector, Sector == Sector.Staples);
-    def hide302020 = GetHide(change302020, change000000, Performance, Sector, Sector == Sector.Staples);
-    def hide302030 = GetHide(change302030, change000000, Performance, Sector, Sector == Sector.Staples);
-    def hide303010 = GetHide(change303010, change000000, Performance, Sector, Sector == Sector.Staples);
-    def hide303020 = GetHide(change303020, change000000, Performance, Sector, Sector == Sector.Staples);
-    def hide351010 = GetHide(change351010, change000000, Performance, Sector, Sector == Sector.Healthcare);
-    def hide351020 = GetHide(change351020, change000000, Performance, Sector, Sector == Sector.Healthcare);
-    def hide352010 = GetHide(change352010, change000000, Performance, Sector, Sector == Sector.Healthcare);
-    def hide352020 = GetHide(change352020, change000000, Performance, Sector, Sector == Sector.Healthcare);
-    def hide352030 = GetHide(change352030, change000000, Performance, Sector, Sector == Sector.Healthcare);
-    def hide401010 = GetHide(change401010, change000000, Performance, Sector, Sector == Sector.Financials);
-    def hide402010 = GetHide(change402010, change000000, Performance, Sector, Sector == Sector.Financials);
-    def hide402020 = GetHide(change402020, change000000, Performance, Sector, Sector == Sector.Financials);
-    def hide402030 = GetHide(change402030, change000000, Performance, Sector, Sector == Sector.Financials);
-    def hide403010 = GetHide(change403010, change000000, Performance, Sector, Sector == Sector.Financials);
-    def hide451020 = GetHide(change451020, change000000, Performance, Sector, Sector == Sector.Technology);
-    def hide451030 = GetHide(change451030, change000000, Performance, Sector, Sector == Sector.Technology);
-    def hide452010 = GetHide(change452010, change000000, Performance, Sector, Sector == Sector.Technology);
-    def hide452020 = GetHide(change452020, change000000, Performance, Sector, Sector == Sector.Technology);
-    def hide452030 = GetHide(change452030, change000000, Performance, Sector, Sector == Sector.Technology);
-    def hide453010 = GetHide(change453010, change000000, Performance, Sector, Sector == Sector.Technology);
-    def hide501010 = GetHide(change501010, change000000, Performance, Sector, Sector == Sector.Communications);
-    def hide501020 = GetHide(change501020, change000000, Performance, Sector, Sector == Sector.Communications);
-    def hide502010 = GetHide(change502010, change000000, Performance, Sector, Sector == Sector.Communications);
-    def hide502020 = GetHide(change502020, change000000, Performance, Sector, Sector == Sector.Communications);
-    def hide502030 = GetHide(change502030, change000000, Performance, Sector, Sector == Sector.Communications);
-    def hide551010 = GetHide(change551010, change000000, Performance, Sector, Sector == Sector.Utilities);
-    def hide551020 = GetHide(change551020, change000000, Performance, Sector, Sector == Sector.Utilities);
-    def hide551030 = GetHide(change551030, change000000, Performance, Sector, Sector == Sector.Utilities);
-    def hide551040 = GetHide(change551040, change000000, Performance, Sector, Sector == Sector.Utilities);
-    def hide551050 = GetHide(change551050, change000000, Performance, Sector, Sector == Sector.Utilities);
-    def hide601025 = GetHide(change601025, change000000, Performance, Sector, Sector == Sector.RealEstate);
-    def hide601030 = GetHide(change601030, change000000, Performance, Sector, Sector == Sector.RealEstate);
-    def hide601040 = GetHide(change601040, change000000, Performance, Sector, Sector == Sector.RealEstate);
-    def hide601050 = GetHide(change601050, change000000, Performance, Sector, Sector == Sector.RealEstate);
-    def hide601060 = GetHide(change601060, change000000, Performance, Sector, Sector == Sector.RealEstate);
-    def hide601070 = GetHide(change601070, change000000, Performance, Sector, Sector == Sector.RealEstate);
-    def hide601080 = GetHide(change601080, change000000, Performance, Sector, Sector == Sector.RealEstate);
-    def hide602010 = GetHide(change602010, change000000, Performance, Sector, Sector == Sector.RealEstate);
+    def hide101010 = if isStartBar then Sector != Sector.All and Sector != Sector.Energy         or Performance == Performance.Leading and GetValue(change101010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change101010 > change000000, endOffset) else hide101010[1];
+    def hide101020 = if isStartBar then Sector != Sector.All and Sector != Sector.Energy         or Performance == Performance.Leading and GetValue(change101020 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change101020 > change000000, endOffset) else hide101020[1];
+    def hide151010 = if isStartBar then Sector != Sector.All and Sector != Sector.Materials      or Performance == Performance.Leading and GetValue(change151010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change151010 > change000000, endOffset) else hide151010[1];
+    def hide151020 = if isStartBar then Sector != Sector.All and Sector != Sector.Materials      or Performance == Performance.Leading and GetValue(change151020 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change151020 > change000000, endOffset) else hide151020[1];
+    def hide151030 = if isStartBar then Sector != Sector.All and Sector != Sector.Materials      or Performance == Performance.Leading and GetValue(change151030 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change151030 > change000000, endOffset) else hide151030[1];
+    def hide151040 = if isStartBar then Sector != Sector.All and Sector != Sector.Materials      or Performance == Performance.Leading and GetValue(change151040 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change151040 > change000000, endOffset) else hide151040[1];
+    def hide201010 = if isStartBar then Sector != Sector.All and Sector != Sector.Industrials    or Performance == Performance.Leading and GetValue(change201010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change201010 > change000000, endOffset) else hide201010[1];
+    def hide201020 = if isStartBar then Sector != Sector.All and Sector != Sector.Industrials    or Performance == Performance.Leading and GetValue(change201020 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change201020 > change000000, endOffset) else hide201020[1];
+    def hide201030 = if isStartBar then Sector != Sector.All and Sector != Sector.Industrials    or Performance == Performance.Leading and GetValue(change201030 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change201030 > change000000, endOffset) else hide201030[1];
+    def hide201040 = if isStartBar then Sector != Sector.All and Sector != Sector.Industrials    or Performance == Performance.Leading and GetValue(change201040 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change201040 > change000000, endOffset) else hide201040[1];
+    def hide201050 = if isStartBar then Sector != Sector.All and Sector != Sector.Industrials    or Performance == Performance.Leading and GetValue(change201050 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change201050 > change000000, endOffset) else hide201050[1];
+    def hide201060 = if isStartBar then Sector != Sector.All and Sector != Sector.Industrials    or Performance == Performance.Leading and GetValue(change201060 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change201060 > change000000, endOffset) else hide201060[1];
+    def hide201070 = if isStartBar then Sector != Sector.All and Sector != Sector.Industrials    or Performance == Performance.Leading and GetValue(change201070 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change201070 > change000000, endOffset) else hide201070[1];
+    def hide202010 = if isStartBar then Sector != Sector.All and Sector != Sector.Industrials    or Performance == Performance.Leading and GetValue(change202010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change202010 > change000000, endOffset) else hide202010[1];
+    def hide202020 = if isStartBar then Sector != Sector.All and Sector != Sector.Industrials    or Performance == Performance.Leading and GetValue(change202020 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change202020 > change000000, endOffset) else hide202020[1];
+    def hide203010 = if isStartBar then Sector != Sector.All and Sector != Sector.Industrials    or Performance == Performance.Leading and GetValue(change203010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change203010 > change000000, endOffset) else hide203010[1];
+    def hide203020 = if isStartBar then Sector != Sector.All and Sector != Sector.Industrials    or Performance == Performance.Leading and GetValue(change203020 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change203020 > change000000, endOffset) else hide203020[1];
+    def hide203040 = if isStartBar then Sector != Sector.All and Sector != Sector.Industrials    or Performance == Performance.Leading and GetValue(change203040 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change203040 > change000000, endOffset) else hide203040[1];
+    def hide251010 = if isStartBar then Sector != Sector.All and Sector != Sector.Discretionary  or Performance == Performance.Leading and GetValue(change251010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change251010 > change000000, endOffset) else hide251010[1];
+    def hide251020 = if isStartBar then Sector != Sector.All and Sector != Sector.Discretionary  or Performance == Performance.Leading and GetValue(change251020 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change251020 > change000000, endOffset) else hide251020[1];
+    def hide252010 = if isStartBar then Sector != Sector.All and Sector != Sector.Discretionary  or Performance == Performance.Leading and GetValue(change252010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change252010 > change000000, endOffset) else hide252010[1];
+    def hide252020 = if isStartBar then Sector != Sector.All and Sector != Sector.Discretionary  or Performance == Performance.Leading and GetValue(change252020 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change252020 > change000000, endOffset) else hide252020[1];
+    def hide252030 = if isStartBar then Sector != Sector.All and Sector != Sector.Discretionary  or Performance == Performance.Leading and GetValue(change252030 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change252030 > change000000, endOffset) else hide252030[1];
+    def hide253010 = if isStartBar then Sector != Sector.All and Sector != Sector.Discretionary  or Performance == Performance.Leading and GetValue(change253010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change253010 > change000000, endOffset) else hide253010[1];
+    def hide255010 = if isStartBar then Sector != Sector.All and Sector != Sector.Discretionary  or Performance == Performance.Leading and GetValue(change255010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change255010 > change000000, endOffset) else hide255010[1];
+    def hide255030 = if isStartBar then Sector != Sector.All and Sector != Sector.Discretionary  or Performance == Performance.Leading and GetValue(change255030 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change255030 > change000000, endOffset) else hide255030[1];
+    def hide255040 = if isStartBar then Sector != Sector.All and Sector != Sector.Discretionary  or Performance == Performance.Leading and GetValue(change255040 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change255040 > change000000, endOffset) else hide255040[1];
+    def hide301010 = if isStartBar then Sector != Sector.All and Sector != Sector.Staples        or Performance == Performance.Leading and GetValue(change301010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change301010 > change000000, endOffset) else hide301010[1];
+    def hide302010 = if isStartBar then Sector != Sector.All and Sector != Sector.Staples        or Performance == Performance.Leading and GetValue(change302010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change302010 > change000000, endOffset) else hide302010[1];
+    def hide302020 = if isStartBar then Sector != Sector.All and Sector != Sector.Staples        or Performance == Performance.Leading and GetValue(change302020 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change302020 > change000000, endOffset) else hide302020[1];
+    def hide302030 = if isStartBar then Sector != Sector.All and Sector != Sector.Staples        or Performance == Performance.Leading and GetValue(change302030 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change302030 > change000000, endOffset) else hide302030[1];
+    def hide303010 = if isStartBar then Sector != Sector.All and Sector != Sector.Staples        or Performance == Performance.Leading and GetValue(change303010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change303010 > change000000, endOffset) else hide303010[1];
+    def hide303020 = if isStartBar then Sector != Sector.All and Sector != Sector.Staples        or Performance == Performance.Leading and GetValue(change303020 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change303020 > change000000, endOffset) else hide303020[1];
+    def hide351010 = if isStartBar then Sector != Sector.All and Sector != Sector.Healthcare     or Performance == Performance.Leading and GetValue(change351010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change351010 > change000000, endOffset) else hide351010[1];
+    def hide351020 = if isStartBar then Sector != Sector.All and Sector != Sector.Healthcare     or Performance == Performance.Leading and GetValue(change351020 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change351020 > change000000, endOffset) else hide351020[1];
+    def hide352010 = if isStartBar then Sector != Sector.All and Sector != Sector.Healthcare     or Performance == Performance.Leading and GetValue(change352010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change352010 > change000000, endOffset) else hide352010[1];
+    def hide352020 = if isStartBar then Sector != Sector.All and Sector != Sector.Healthcare     or Performance == Performance.Leading and GetValue(change352020 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change352020 > change000000, endOffset) else hide352020[1];
+    def hide352030 = if isStartBar then Sector != Sector.All and Sector != Sector.Healthcare     or Performance == Performance.Leading and GetValue(change352030 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change352030 > change000000, endOffset) else hide352030[1];
+    def hide401010 = if isStartBar then Sector != Sector.All and Sector != Sector.Financials     or Performance == Performance.Leading and GetValue(change401010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change401010 > change000000, endOffset) else hide401010[1];
+    def hide402010 = if isStartBar then Sector != Sector.All and Sector != Sector.Financials     or Performance == Performance.Leading and GetValue(change402010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change402010 > change000000, endOffset) else hide402010[1];
+    def hide402020 = if isStartBar then Sector != Sector.All and Sector != Sector.Financials     or Performance == Performance.Leading and GetValue(change402020 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change402020 > change000000, endOffset) else hide402020[1];
+    def hide402030 = if isStartBar then Sector != Sector.All and Sector != Sector.Financials     or Performance == Performance.Leading and GetValue(change402030 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change402030 > change000000, endOffset) else hide402030[1];
+    def hide403010 = if isStartBar then Sector != Sector.All and Sector != Sector.Financials     or Performance == Performance.Leading and GetValue(change403010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change403010 > change000000, endOffset) else hide403010[1];
+    def hide451020 = if isStartBar then Sector != Sector.All and Sector != Sector.Technology     or Performance == Performance.Leading and GetValue(change451020 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change451020 > change000000, endOffset) else hide451020[1];
+    def hide451030 = if isStartBar then Sector != Sector.All and Sector != Sector.Technology     or Performance == Performance.Leading and GetValue(change451030 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change451030 > change000000, endOffset) else hide451030[1];
+    def hide452010 = if isStartBar then Sector != Sector.All and Sector != Sector.Technology     or Performance == Performance.Leading and GetValue(change452010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change452010 > change000000, endOffset) else hide452010[1];
+    def hide452020 = if isStartBar then Sector != Sector.All and Sector != Sector.Technology     or Performance == Performance.Leading and GetValue(change452020 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change452020 > change000000, endOffset) else hide452020[1];
+    def hide452030 = if isStartBar then Sector != Sector.All and Sector != Sector.Technology     or Performance == Performance.Leading and GetValue(change452030 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change452030 > change000000, endOffset) else hide452030[1];
+    def hide453010 = if isStartBar then Sector != Sector.All and Sector != Sector.Technology     or Performance == Performance.Leading and GetValue(change453010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change453010 > change000000, endOffset) else hide453010[1];
+    def hide501010 = if isStartBar then Sector != Sector.All and Sector != Sector.Communications or Performance == Performance.Leading and GetValue(change501010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change501010 > change000000, endOffset) else hide501010[1];
+    def hide501020 = if isStartBar then Sector != Sector.All and Sector != Sector.Communications or Performance == Performance.Leading and GetValue(change501020 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change501020 > change000000, endOffset) else hide501020[1];
+    def hide502010 = if isStartBar then Sector != Sector.All and Sector != Sector.Communications or Performance == Performance.Leading and GetValue(change502010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change502010 > change000000, endOffset) else hide502010[1];
+    def hide502020 = if isStartBar then Sector != Sector.All and Sector != Sector.Communications or Performance == Performance.Leading and GetValue(change502020 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change502020 > change000000, endOffset) else hide502020[1];
+    def hide502030 = if isStartBar then Sector != Sector.All and Sector != Sector.Communications or Performance == Performance.Leading and GetValue(change502030 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change502030 > change000000, endOffset) else hide502030[1];
+    def hide551010 = if isStartBar then Sector != Sector.All and Sector != Sector.Utilities      or Performance == Performance.Leading and GetValue(change551010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change551010 > change000000, endOffset) else hide551010[1];
+    def hide551020 = if isStartBar then Sector != Sector.All and Sector != Sector.Utilities      or Performance == Performance.Leading and GetValue(change551020 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change551020 > change000000, endOffset) else hide551020[1];
+    def hide551030 = if isStartBar then Sector != Sector.All and Sector != Sector.Utilities      or Performance == Performance.Leading and GetValue(change551030 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change551030 > change000000, endOffset) else hide551030[1];
+    def hide551040 = if isStartBar then Sector != Sector.All and Sector != Sector.Utilities      or Performance == Performance.Leading and GetValue(change551040 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change551040 > change000000, endOffset) else hide551040[1];
+    def hide551050 = if isStartBar then Sector != Sector.All and Sector != Sector.Utilities      or Performance == Performance.Leading and GetValue(change551050 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change551050 > change000000, endOffset) else hide551050[1];
+    def hide601025 = if isStartBar then Sector != Sector.All and Sector != Sector.RealEstate     or Performance == Performance.Leading and GetValue(change601025 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change601025 > change000000, endOffset) else hide601025[1];
+    def hide601030 = if isStartBar then Sector != Sector.All and Sector != Sector.RealEstate     or Performance == Performance.Leading and GetValue(change601030 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change601030 > change000000, endOffset) else hide601030[1];
+    def hide601040 = if isStartBar then Sector != Sector.All and Sector != Sector.RealEstate     or Performance == Performance.Leading and GetValue(change601040 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change601040 > change000000, endOffset) else hide601040[1];
+    def hide601050 = if isStartBar then Sector != Sector.All and Sector != Sector.RealEstate     or Performance == Performance.Leading and GetValue(change601050 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change601050 > change000000, endOffset) else hide601050[1];
+    def hide601060 = if isStartBar then Sector != Sector.All and Sector != Sector.RealEstate     or Performance == Performance.Leading and GetValue(change601060 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change601060 > change000000, endOffset) else hide601060[1];
+    def hide601070 = if isStartBar then Sector != Sector.All and Sector != Sector.RealEstate     or Performance == Performance.Leading and GetValue(change601070 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change601070 > change000000, endOffset) else hide601070[1];
+    def hide601080 = if isStartBar then Sector != Sector.All and Sector != Sector.RealEstate     or Performance == Performance.Leading and GetValue(change601080 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change601080 > change000000, endOffset) else hide601080[1];
+    def hide602010 = if isStartBar then Sector != Sector.All and Sector != Sector.RealEstate     or Performance == Performance.Leading and GetValue(change602010 < change000000, endOffset) or Performance == Performance.Lagging and GetValue(change602010 > change000000, endOffset) else hide602010[1];
 ###
 
 

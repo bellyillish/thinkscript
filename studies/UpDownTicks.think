@@ -325,7 +325,7 @@ declare lower;
     TK.DefineColor("Neutral", Color.DARK_GRAY);
     TK.SetDefaultColor(TK.Color("Neutral"));
     TK.AssignValueColor(
-        if Display == Display.Cumulative and isNewPeriod and isActivePeriod[1]
+        if isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
         else if TK > neutral
             then TK.Color("Up")

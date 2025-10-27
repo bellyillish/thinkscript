@@ -174,7 +174,7 @@ declare real_size;
     input TickerOne = "";
     input TickerTwo = "SPY";
 
-    input QuoteOne = {
+    input Quote = {
         default "Close",
         "Open",
         "High",
@@ -183,34 +183,21 @@ declare real_size;
         "HLC3",
         "OHLC4",
         "VWAP",
-        "RTH",
-        "ETH"
+        "One",
+        "Two"
     };
 
-    input QuoteTwo = {
-        default "Close",
-        "Open",
-        "High",
-        "Low",
-        "HL2",
-        "HLC3",
-        "OHLC4",
-        "VWAP",
-        "RTH",
-        "ETH"
+    input Mode = {
+        default "Combined",
+        "Separate",
+        "Cloud"
     };
 
     input Display = {
-        default "Summation",
-        "Overlay",
-        "Cloud",
-        "Ratio"
-    };
-
-    input Scale = {
         default "Logarithmic",
         "Relative",
-        "Absolute"
+        "Absolute",
+        "Tick"
     };
 
     input Period = {
@@ -237,28 +224,16 @@ declare real_size;
 
 
 ### LOOKUPS ###
-    def typeOne;
-    switch (QuoteOne) {
-        case "Open"  : typeOne = FundamentalType.OPEN;
-        case "High"  : typeOne = FundamentalType.HIGH;
-        case "Low"   : typeOne = FundamentalType.LOW;
-        case "HL2"   : typeOne = FundamentalType.HL2;
-        case "HLC3"  : typeOne = FundamentalType.HLC3;
-        case "OHLC4" : typeOne = FundamentalType.OHLC4;
-        case "VWAP"  : typeOne = FundamentalType.VWAP;
-        default      : typeOne = FundamentalType.CLOSE;
-    }
-
-    def typeTwo;
-    switch (QuoteTwo) {
-        case "Open"  : typeTwo = FundamentalType.OPEN;
-        case "High"  : typeTwo = FundamentalType.HIGH;
-        case "Low"   : typeTwo = FundamentalType.LOW;
-        case "HL2"   : typeTwo = FundamentalType.HL2;
-        case "HLC3"  : typeTwo = FundamentalType.HLC3;
-        case "OHLC4" : typeTwo = FundamentalType.OHLC4;
-        case "VWAP"  : typeTwo = FundamentalType.VWAP;
-        default      : typeTwo = FundamentalType.CLOSE;
+    def type;
+    switch (Quote) {
+        case "Open"  : type = FundamentalType.OPEN;
+        case "High"  : type = FundamentalType.HIGH;
+        case "Low"   : type = FundamentalType.LOW;
+        case "HL2"   : type = FundamentalType.HL2;
+        case "HLC3"  : type = FundamentalType.HLC3;
+        case "OHLC4" : type = FundamentalType.OHLC4;
+        case "VWAP"  : type = FundamentalType.VWAP;
+        default      : type = FundamentalType.CLOSE;
     }
 
     def rawOpenOne;
@@ -266,52 +241,34 @@ declare real_size;
     def rawCloseOne;
     def rawCloseTwo;
     if TickerOne != "" {
-        rawCloseOne = Fundamental(typeOne, TickerOne);
-        rawCloseTwo = Fundamental(typeTwo, TickerTwo);
         rawOpenOne  = open(TickerOne);
         rawOpenTwo  = open(TickerTwo);
+        rawCloseOne = Fundamental(type, TickerOne);
+        rawCloseTwo = Fundamental(type, TickerTwo);
     }
     else {
-        rawCloseOne = Fundamental(typeOne, GetSymbol());
-        rawCloseTwo = Fundamental(typeTwo, TickerTwo);
-        rawOpenOne  = open(GetSymbol());
+        rawOpenOne  = open;
         rawOpenTwo  = open(TickerTwo);
+        rawCloseOne = Fundamental(type);
+        rawCloseTwo = Fundamental(type, TickerTwo);
     }
 
     # Sanitize
-    def cleanOpenOne;
-    def cleanOpenTwo;
-    def cleanCloseOne;
-    def cleanCloseTwo;
-    if Sanitize {
-        cleanOpenOne  = Value(rawOpenOne);
-        cleanOpenTwo  = Value(rawOpenTwo);
-        cleanCloseOne = Value(rawCloseOne);
-        cleanCloseTwo = Value(rawCloseTwo);
-    }
-    else {
-        cleanOpenOne  = rawOpenOne;
-        cleanOpenTwo  = rawOpenTwo;
-        cleanCloseOne = rawCloseOne;
-        cleanCloseTwo = rawCloseTwo;
-    }
-
-    # Logarithmic
     def dataOpenOne;
     def dataOpenTwo;
     def dataCloseOne;
     def dataCloseTwo;
-    if Scale == Scale.Logarithmic {
-        dataOpenOne  = Log(cleanOpenOne);
-        dataOpenTwo  = Log(cleanOpenTwo);
-        dataCloseOne = Log(cleanCloseOne);
-        dataCloseTwo = Log(cleanCloseTwo);
+    if Sanitize {
+        dataOpenOne  = Value(rawOpenOne);
+        dataOpenTwo  = Value(rawOpenTwo);
+        dataCloseOne = Value(rawCloseOne);
+        dataCloseTwo = Value(rawCloseTwo);
     }
     else {
-        dataOpenOne  = cleanOpenOne;
-        dataOpenTwo  = cleanOpenTwo;
-        dataCloseOne = cleanCloseOne;
-        dataCloseTwo = cleanCloseTwo;
+        dataOpenOne  = rawOpenOne;
+        dataOpenTwo  = rawOpenTwo;
+        dataCloseOne = rawCloseOne;
+        dataCloseTwo = rawCloseTwo;
     }
 ###
 
@@ -320,128 +277,103 @@ declare real_size;
     def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
     def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
 
-    # Open one
+    # Logarithmic
+    def logOpenOne;
+    def logOpenTwo;
+    def logCloseOne;
+    def logCloseTwo;
+    if Display == Display.Logarithmic {
+        logOpenOne  = Log(dataOpenOne);
+        logOpenTwo  = Log(dataOpenTwo);
+        logCloseOne = Log(dataCloseOne);
+        logCloseTwo = Log(dataCloseTwo);
+    }
+    else {
+        logOpenOne  = dataOpenOne;
+        logOpenTwo  = dataOpenTwo;
+        logCloseOne = dataCloseOne;
+        logCloseTwo = dataCloseTwo;
+    }
+
+    # Open
     def startOne;
-    if QuoteOne == QuoteOne.RTH and !Chart().isIntradayBar {
-        startOne = dataOpenOne;
-    }
-    else {
-        startOne = dataCloseOne[1];
-    }
-
-    # Open two
     def startTwo;
-    if QuoteTwo == QuoteTwo.RTH and !Chart().isIntradayBar {
-        startTwo = dataOpenTwo;
+    if Quote == Quote.One and !Chart().isIntradayBar and !Chart().isMultiDay {
+        startOne = logOpenOne;
+        startTwo = logOpenTwo;
     }
     else {
-        startTwo = dataCloseTwo[1];
+        startOne = logCloseOne[1];
+        startTwo = logCloseTwo[1];
     }
 
-    # Close one
+    # Close
     def endOne;
-    if QuoteOne == QuoteOne.ETH and Chart().isIntradayBar {
-        endOne = dataCloseOne[1];
-    }
-    else if QuoteOne == QuoteOne.ETH and !Chart().isMultiDay {
-        endOne = dataOpenOne;
-    }
-    else {
-        endOne = dataCloseOne;
-    }
-
-    # Close two
     def endTwo;
-    if QuoteTwo == QuoteTwo.ETH and Chart().isIntradayBar {
-        endTwo = dataCloseTwo[1];
+    if Quote == Quote.Two and Chart().isIntradayBar {
+        endOne = logCloseOne[1];
+        endTwo = logCloseTwo[1];
     }
-    else if QuoteTwo == QuoteTwo.ETH and !Chart().isMultiDay {
-        endTwo = dataOpenTwo;
-    }
-    else {
-        endTwo = dataCloseTwo;
-    }
-
-    # Change
-    def rawChangeOne;
-    def rawChangeTwo;
-    if Scale == Scale.Relative {
-        rawChangeOne = endOne / startOne - 1;
-        rawChangeTwo = endTwo / startTwo - 1;
+    else if Quote == Quote.Two and !Chart().isMultiDay {
+        endOne = logOpenOne;
+        endTwo = logOpenTwo;
     }
     else {
-        rawChangeOne = endOne - startOne;
-        rawChangeTwo = endTwo - startTwo;
+        endOne = logCloseOne;
+        endTwo = logCloseTwo;
     }
 
-    # Oscillation
-    def oscChangeOne;
-    def oscChangeTwo;
-    if Oscillation > 1 {
-        oscChangeOne = rawChangeOne - Average(rawChangeOne, Oscillation);
-        oscChangeTwo = rawChangeTwo - Average(rawChangeTwo, Oscillation);
+    # Tick
+    def rawTickOne;
+    def rawTickTwo;
+    def rawTick;
+    if Display == Display.Relative {
+        rawTickOne = endOne / startOne - 1;
+        rawTickTwo = endTwo / startTwo - 1;
+        rawTick    = (endOne / startOne) / (endTwo / startTwo) - 1;
     }
     else {
-        oscChangeOne = rawChangeOne;
-        oscChangeTwo = rawChangeTwo;
+        rawTickOne = endOne - startOne;
+        rawTickTwo = endTwo - startTwo;
+        rawTick    = rawTickOne - rawTickTwo;
     }
 
-    # Smoothing
-    def changeOne;
-    def changeTwo;
-    if Smoothing > 1 {
-        changeOne = Inertia(oscChangeOne, Smoothing);
-        changeTwo = Inertia(oscChangeTwo, Smoothing);
-    }
-    else {
-        changeOne = oscChangeOne;
-        changeTwo = oscChangeTwo;
-    }
-
-    # Summation one
+    # Cumulative
     def rawSumOne;
-    if !Chart().isValidBar or !isActivePeriod or IsNaN(changeOne + changeTwo) {
-        rawSumOne = Double.NaN;
-    }
-    else if isNewPeriod or IsNaN(rawSumOne[1]) {
-        rawSumOne = changeOne + (Scale == Scale.Relative);
-    }
-    else {
-        rawSumOne = if Scale == Scale.Relative
-            then rawSumOne[1] * (changeOne + 1)
-            else rawSumOne[1] + changeOne;
-    }
-
-    # Summation two
     def rawSumTwo;
-    if !Chart().isValidBar or !isActivePeriod or IsNaN(changeOne + changeTwo) {
-        rawSumTwo = Double.NaN;
+    def rawSum;
+    if isNewPeriod {
+        rawSumOne = rawTickOne;
+        rawSumTwo = rawTickTwo;
+        rawSum    = rawTick;
     }
-    else if isNewPeriod or IsNaN(rawSumTwo[1]) {
-        rawSumTwo = changeTwo + (Scale == Scale.Relative);
+    else if Display == Display.Relative {
+        rawSumOne = (rawSumOne[1] + 1) * (rawTickOne + 1) - 1;
+        rawSumTwo = (rawSumTwo[1] + 1) * (rawTickTwo + 1) - 1;
+        rawSum    = (rawSum[1] + 1) * (rawTick + 1) - 1;
     }
     else {
-        rawSumTwo = if Scale == Scale.Relative
-            then rawSumTwo[1] * (changeTwo + 1)
-            else rawSumTwo[1] + changeTwo;
+        rawSumOne = rawSumOne[1] + rawTickOne;
+        rawSumTwo = rawSumTwo[1] + rawTickTwo;
+        rawSum    = rawSum[1] + rawTick;
     }
 
-    # Relative summation
-    def change;
+    # Filters
     def sumOne;
     def sumTwo;
-    def summation;
-    if Scale == Scale.Relative {
-        change    = (changeOne + 1) / (changeTwo + 1) - 1;
-        summation = (rawSumOne + 1) / (rawSumTwo + 1) - 1;
-        sumOne    = rawSumOne - 1;
-        sumTwo    = rawSumTwo - 1;
+    def sum;
+    def tick;
+    if !Chart().isValidBar or !isActivePeriod {
+        sumOne  = Double.NaN;
+        sumTwo  = Double.NaN;
+        sum     = Double.NaN;
+        tick    = Double.NaN;
     }
     else {
-        change    = changeOne - changeTwo;
-        summation = rawSumOne - rawSumTwo;
-        sumOne    = rawSumOne;
-        sumTwo    = rawSumTwo;
+        sumOne  = Filters(rawSumOne, Oscillation, Smoothing);
+        sumTwo  = Filters(rawSumTwo, Oscillation, Smoothing);
+        sum     = Filters(rawSum, Oscillation, Smoothing);
+        tick    = Filters(rawTick, Oscillation, Smoothing);
     }
 ###
 
@@ -451,9 +383,27 @@ declare real_size;
     DefineGlobalColor("Separator",  CreateColor(32, 32, 32));
     DefineGlobalColor("Background", CreateColor(12, 12, 12));
 
-    # Summation
-    plot S = summation;
-    S.SetHiding(Display != Display.Summation);
+    # Tick
+    plot T = tick;
+    T.SetHiding(Display != Display.Tick);
+    T.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
+    T.DefineColor("Up", Color.UPTICK);
+    T.DefineColor("Down", Color.DOWNTICK);
+    T.DefineColor("Neutral", Color.DARK_GRAY);
+    T.SetDefaultColor(T.Color("Neutral"));
+    T.AssignValueColor(
+        if isNewPeriod and isActivePeriod[1]
+            then GlobalColor("Background")
+        else if tick > 0
+            then T.Color("Up")
+        else if tick < 0
+            then T.Color("Down")
+            else T.Color("Neutral")
+    );
+
+    # Cumulative
+    plot S = sum;
+    S.SetHiding(Display == Display.Tick or Mode != Mode.Combined);
     S.DefineColor("Up", Color.UPTICK);
     S.DefineColor("Down", Color.DOWNTICK);
     S.DefineColor("Neutral", Color.DARK_GRAY);
@@ -461,66 +411,55 @@ declare real_size;
     S.AssignValueColor(
         if isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
-        else if change > 0
+        else if sum > 0
             then S.Color("Up")
-        else if change < 0
+        else if sum < 0
             then S.Color("Down")
             else S.Color("Neutral")
     );
 
-    # Difference/ratio
-    plot C = change;
-    C.SetHiding(Display != Display.Ratio);
-    C.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
-    C.DefineColor("Up", Color.UPTICK);
-    C.DefineColor("Down", Color.DOWNTICK);
-    C.DefineColor("Neutral", Color.DARK_GRAY);
-    C.SetDefaultColor(C.Color("Neutral"));
-    C.AssignValueColor(
-        if change > 0
-            then C.Color("Up")
-        else if change < 0
-            then C.Color("Down")
-            else C.Color("Neutral")
-    );
-
-    # One
+    # Cumulative One
     plot One = sumOne;
-    One.SetHiding(Display != Display.Overlay and Display != Display.Cloud);
+    One.SetHiding(Display == Display.Tick or Mode == Mode.Combined);
     One.DefineColor("Value", Color.UPTICK);
     One.SetDefaultColor(One.Color("Value"));
     One.AssignValueColor(
-        if isNewPeriod and Display != Display.Cloud
+        if isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
             else One.Color("Value")
     );
 
-    # Two
+    # Cumulative Two
     plot Two = sumTwo;
-    Two.SetHiding(Display != Display.Overlay and Display != Display.Cloud);
+    Two.SetHiding(Display == Display.Tick or Mode == Mode.Combined);
     Two.DefineColor("Value", Color.DOWNTICK);
     Two.SetDefaultColor(Two.Color("Value"));
     Two.AssignValueColor(
-        if isNewPeriod and Display != Display.Cloud
+        if isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
             else Two.Color("Value")
     );
 
     # Cloud
-    def cloudOne = sumOne;
-    def cloudTwo = sumTwo;
+    def cloudOne = sumTwo;
+    def cloudTwo = sumOne;
     AddCloud(
-        data1  = if Display == Display.Cloud then cloudOne else Double.NaN,
-        data2  = if Display == Display.Cloud then cloudTwo else Double.NaN,
+        data1 = if Mode == Mode.Cloud and Display != Display.Tick
+            then cloudOne
+            else Double.NaN,
+        data2 = if Mode == Mode.Cloud and Display != Display.Tick
+            then cloudTwo
+            else Double.NaN,
         color1 = One.Color("Value"),
         color2 = Two.Color("Value")
     );
 
-    # Mid
-    plot Mid = 0;
-    Mid.SetDefaultColor(GlobalColor("Line"));
-    Mid.HideBubble();
-    Mid.HideTitle();
+    # Line
+    plot N = 0;
+    N.SetDefaultColor(GlobalColor("Line"));
+    N.HideBubble();
+    N.HideTitle();
+    N.Hide();
 
     # Separators
     AddVerticalLine(

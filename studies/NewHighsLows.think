@@ -182,6 +182,7 @@ declare lower;
 
     input TimeFrame = {
         default "1 Week",
+        "2 Weeks",
         "1 Month",
         "3 Months",
         "6 Months",
@@ -201,7 +202,6 @@ declare lower;
     input Display = {
         default "Difference",
         "Tick",
-        "Percentage",
         "Ratio",
         "Log Ratio",
         "Cumulative"
@@ -242,17 +242,6 @@ declare lower;
         default      : type = FundamentalType.CLOSE;
     }
 
-    def rawAll;
-    switch (Market) {
-        case "ALLUSA"       : rawAll = close("$ADVUS")  + close("$DECLUS") + close("$UNCHUS");
-        case "NYSE"         : rawAll = close("$ADVN")   + close("$DECN")   + close("$UNCN");
-        case "NASDAQ"       : rawAll = close("$ADVN/Q") + close("$DECN/Q") + close("$UNCN/Q");
-        case "S&P 500"      : rawAll = close("$ADVSP")  + close("$DECLSP") + close("$UNCHSP");
-        case "NASDAQ 100"   : rawAll = close("$ADVND")  + close("$DECLND") + close("$UNCHND");
-        case "RUSSELL 2000" : rawAll = close("$ADVRL")  + close("$DECLRL") + close("$UNCHRL");
-        case "DJIA"         : rawAll = close("$ADVI")   + close("$DECLI")  + close("$UNCHI");
-    }
-
     def rawLows;
     def rawHighs;
     switch (Market) {
@@ -261,6 +250,9 @@ declare lower;
                 case "1 Week":
                     rawLows  = Fundamental(type, "$USLO1W");
                     rawHighs = Fundamental(type, "$USHI1W");
+                case "2 Weeks":
+                    rawLows  = Fundamental(type, "$USLO2W");
+                    rawHighs = Fundamental(type, "$USHI2W");
                 case "1 Month":
                     rawLows  = Fundamental(type, "$USLO1M");
                     rawHighs = Fundamental(type, "$USHI1M");
@@ -279,6 +271,9 @@ declare lower;
                 case "1 Week":
                     rawLows  = Fundamental(type, "$NYLO1W");
                     rawHighs = Fundamental(type, "$NYHI1W");
+                case "2 Weeks":
+                    rawLows  = Fundamental(type, "$NYLO2W");
+                    rawHighs = Fundamental(type, "$NYHI2W");
                 case "1 Month":
                     rawLows  = Fundamental(type, "$NYLO1M");
                     rawHighs = Fundamental(type, "$NYHI1M");
@@ -297,6 +292,9 @@ declare lower;
                 case "1 Week":
                     rawLows  = Fundamental(type, "$NALO1W");
                     rawHighs = Fundamental(type, "$NAHI1W");
+                case "2 Weeks":
+                    rawLows  = Fundamental(type, "$NALO2W");
+                    rawHighs = Fundamental(type, "$NAHI2W");
                 case "1 Month":
                     rawLows  = Fundamental(type, "$NALO1M");
                     rawHighs = Fundamental(type, "$NAHI1M");
@@ -315,6 +313,9 @@ declare lower;
                 case "1 Week":
                     rawLows  = Fundamental(type, "$LOSP1W");
                     rawHighs = Fundamental(type, "$HISP1W");
+                case "2 Weeks":
+                    rawLows  = Fundamental(type, "$LOSP2W");
+                    rawHighs = Fundamental(type, "$HISP2W");
                 case "1 Month":
                     rawLows  = Fundamental(type, "$LOSP1M");
                     rawHighs = Fundamental(type, "$HISP1M");
@@ -333,6 +334,9 @@ declare lower;
                 case "1 Week":
                     rawLows  = Fundamental(type, "$LOND1W");
                     rawHighs = Fundamental(type, "$HIND1W");
+                case "2 Weeks":
+                    rawLows  = Fundamental(type, "$LOND2W");
+                    rawHighs = Fundamental(type, "$HIND2W");
                 case "1 Month":
                     rawLows  = Fundamental(type, "$LOND1M");
                     rawHighs = Fundamental(type, "$HIND1M");
@@ -351,6 +355,9 @@ declare lower;
                 case "1 Week":
                     rawLows  = Fundamental(type, "$LORL1W");
                     rawHighs = Fundamental(type, "$HIRL1W");
+                case "2 Weeks":
+                    rawLows  = Fundamental(type, "$LORL2W");
+                    rawHighs = Fundamental(type, "$HIRL2W");
                 case "1 Month":
                     rawLows  = Fundamental(type, "$LORL1M");
                     rawHighs = Fundamental(type, "$HIRL1M");
@@ -369,6 +376,9 @@ declare lower;
                 case "1 Week":
                     rawLows  = Fundamental(type, "$LOI1W");
                     rawHighs = Fundamental(type, "$HII1W");
+                case "2 Weeks":
+                    rawLows  = Fundamental(type, "$LOI2W");
+                    rawHighs = Fundamental(type, "$HII2W");
                 case "1 Month":
                     rawLows  = Fundamental(type, "$LOI1M");
                     rawHighs = Fundamental(type, "$HII1M");
@@ -384,16 +394,13 @@ declare lower;
             }
     }
 
-    def all;
     def lows;
     def highs;
     if Sanitize {
-        all   = Value(rawAll);
         lows  = Value(rawLows);
         highs = Value(rawHighs);
     }
     else {
-        all   = rawAll;
         lows  = rawLows;
         highs = rawHighs;
     }
@@ -435,16 +442,14 @@ declare lower;
         case "Tick"       : value = tickHighs - tickLows;
         case "Ratio"      : value = highs / lows;
         case "Log Ratio"  : value = Log(highs / lows);
-        case "Percentage" : value = highs / all;
         case "Cumulative" : value = sum;
     }
 
     # Neutral
     def neutral;
     switch (Display) {
-        case "Percentage" : neutral = 0.5;
-        case "Ratio"      : neutral = 1;
-        default           : neutral = 0;
+        case "Ratio" : neutral = 1;
+        default      : neutral = 0;
     }
 ###
 
@@ -460,13 +465,8 @@ declare lower;
     HL.DefineColor("Down", Color.DOWNTICK);
     HL.DefineColor("Neutral", Color.DARK_GRAY);
     HL.SetDefaultColor(HL.Color("Neutral"));
-    HL.SetPaintingStrategy(
-        if Display == Display.Tick
-            then PaintingStrategy.HISTOGRAM
-            else PaintingStrategy.LINE
-    );
     HL.AssignValueColor(
-        if Display == Display.Cumulative and isNewPeriod and isActivePeriod[1]
+        if isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
         else if HL > neutral
             then HL.Color("Up")

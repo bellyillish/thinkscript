@@ -377,13 +377,8 @@ declare lower;
     PC.DefineColor("Down", Color.DOWNTICK);
     PC.DefineColor("Neutral", Color.DARK_GRAY);
     PC.SetDefaultColor(PC.Color("Neutral"));
-    PC.SetPaintingStrategy(
-        if Display == Display.Tick
-            then PaintingStrategy.HISTOGRAM
-            else PaintingStrategy.LINE
-    );
     PC.AssignValueColor(
-        if Display == Display.Cumulative and isNewPeriod and isActivePeriod[1]
+        if isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
         else if PC > neutral
             then PC.Color("Up")
