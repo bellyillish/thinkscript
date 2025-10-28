@@ -1,5 +1,5 @@
 declare lower;
-declare zerobase;
+#declare zerobase;
 
 
 ### SCRIPTS ###
@@ -243,9 +243,9 @@ declare zerobase;
     input Sanitize      = no;
     input CompareLength = 12;
     input CompareOffset = 0;
-    input Threshold     = 0.8;
-    input SpikeLength   = 5;
-    input BarsAhead     = 5;
+    input Threshold     = 0.75;
+    input SpikeLength   = 12;
+    input BarsAhead     = 12;
     input ShowLabel     = yes;
     input Separators    = yes;
 ###
@@ -323,6 +323,8 @@ declare zerobase;
     }
 
     def isBarAhead = lastSpike > 0 and BarNumber() <= lastSpike + BarsAhead;
+
+    def best = HighestAll(score * isSpike);
 ###
 
 
@@ -365,12 +367,11 @@ declare zerobase;
             else S.Color("Neutral")
     );
 
-    # Mid
-    plot Mid = 0;
-    Mid.SetHiding(Display == Display.Upper);
-    Mid.SetDefaultColor(GlobalColor("Line"));
-    Mid.HideBubble();
-    Mid.HideTitle();
+    # Line
+    plot N = 0;
+    N.SetDefaultColor(GlobalColor("Line"));
+    N.HideBubble();
+    N.HideTitle();
 
     # Separators
     AddVerticalLine(
@@ -382,8 +383,14 @@ declare zerobase;
     # Labels
     AddLabel(
         visible  = ShowLabel,
-        color    = CreateColor(96, 96, 96),
-        text     = "FOUND: " + spikeCount,
+        color    = Color.LIGHT_GRAY,
+        text     = " BEST: " + best + " ",
+        location = Location.TOP_RIGHT
+    );
+    AddLabel(
+        visible  = ShowLabel,
+        color    = Color.LIGHT_GRAY,
+        text     = " FOUND: " + spikeCount + " ",
         location = Location.TOP_RIGHT
     );
 ###
