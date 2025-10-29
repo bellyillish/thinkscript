@@ -221,6 +221,7 @@ declare lower;
     input CandlesAgo      = 100;
     input Separators      = yes;
     input Sanitize        = no;
+    input Invert          = no;
     input Oscillation     = 0;
     input Smoothing       = 0;
 ###
@@ -333,27 +334,46 @@ declare lower;
         tickAll   = all;
     }
 
-    # Cumulative
-    def sum;
-    if !Chart().isValidBar or !isActivePeriod {
-        sum = Double.NaN;
-    }
-    else if isNewPeriod or IsNaN(sum[1]) {
-        sum = tickCalls - tickPuts;
+    # Invert
+    def tickUp;
+    def tickDn;
+    def up;
+    def dn;
+    if Invert {
+        tickUp = tickCalls;
+        tickDn = tickPuts;
+        up     = calls;
+        dn     = puts;
     }
     else {
-        sum = sum[1] + (tickCalls - tickPuts);
+        tickUp = tickPuts;
+        tickDn = tickCalls;
+        up     = puts;
+        dn     = calls;
     }
 
-    # Plots
-    def value;
+    # Value
+    def rawValue;
     switch (Display) {
-        case "Difference" : value = calls - puts;
-        case "Tick"       : value = tickCalls - tickPuts;
-        case "Ratio"      : value = Value(calls / puts);
-        case "Log Ratio"  : value = Value(Log(calls / puts));
-        case "Percentage" : value = Value(calls / all);
-        case "Cumulative" : value = sum;
+        case "Difference" : rawValue = up - dn;
+        case "Percentage" : rawValue = up / all;
+        case "Ratio"      : rawValue = up / dn;
+        case "Log Ratio"  : rawValue = Log(up / dn);
+        default           : rawValue = tickUp - tickDn;
+    }
+
+    def filteredValue = Filters(rawValue, Oscillation, Smoothing);
+
+    # Cumulative
+    def value;
+    if !Chart().isValidBar or !isActivePeriod {
+        value = Double.NaN;
+    }
+    else if isNewPeriod or Display != Display.Cumulative {
+        value = filteredValue;
+    }
+    else {
+        value = value[1] + filteredValue;
     }
 
     # Neutral
@@ -372,19 +392,19 @@ declare lower;
     DefineGlobalColor("Background", CreateColor(12, 12, 12));
 
     # Value
-    plot PC = Filters(value, Oscillation, Smoothing);
-    PC.DefineColor("Up", Color.UPTICK);
-    PC.DefineColor("Down", Color.DOWNTICK);
-    PC.DefineColor("Neutral", Color.DARK_GRAY);
-    PC.SetDefaultColor(PC.Color("Neutral"));
-    PC.AssignValueColor(
+    plot UD = value;
+    UD.DefineColor("Up", Color.UPTICK);
+    UD.DefineColor("Down", Color.DOWNTICK);
+    UD.DefineColor("Neutral", Color.DARK_GRAY);
+    UD.SetDefaultColor(UD.Color("Neutral"));
+    UD.AssignValueColor(
         if isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
-        else if PC > neutral
-            then PC.Color("Up")
-        else if PC < neutral
-            then PC.Color("Down")
-            else PC.Color("Neutral")
+        else if UD > neutral
+            then UD.Color("Up")
+        else if UD < neutral
+            then UD.Color("Down")
+            else UD.Color("Neutral")
     );
 
     # Line

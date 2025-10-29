@@ -423,26 +423,27 @@ declare lower;
         tickLows  = lows;
     }
 
-    # Cumulative
-    def sum;
-    if !Chart().isValidBar or !isActivePeriod {
-        sum = Double.NaN;
-    }
-    else if isNewPeriod or IsNaN(sum[1]) {
-        sum = tickHighs - tickLows;
-    }
-    else {
-        sum = sum[1] + (tickHighs - tickLows);
+    # Value
+    def rawValue;
+    switch (Display) {
+        case "Difference" : rawValue = highs - lows;
+        case "Ratio"      : rawValue = highs / lows;
+        case "Log Ratio"  : rawValue = Log(highs / lows);
+        default           : rawValue = tickHighs - tickLows;
     }
 
-    # Plots
+    def filteredValue = Filters(rawValue, Oscillation, Smoothing);
+
+    # Cumulative
     def value;
-    switch (Display) {
-        case "Difference" : value = highs - lows;
-        case "Tick"       : value = tickHighs - tickLows;
-        case "Ratio"      : value = highs / lows;
-        case "Log Ratio"  : value = Log(highs / lows);
-        case "Cumulative" : value = sum;
+    if !Chart().isValidBar or !isActivePeriod {
+        value = Double.NaN;
+    }
+    else if isNewPeriod or Display != Display.Cumulative {
+        value = filteredValue;
+    }
+    else {
+        value = value[1] + filteredValue;
     }
 
     # Neutral
@@ -460,7 +461,7 @@ declare lower;
     DefineGlobalColor("Background", CreateColor(12, 12, 12));
 
     # Value
-    plot HL = Filters(value, Oscillation, Smoothing);
+    plot HL = value;
     HL.DefineColor("Up", Color.UPTICK);
     HL.DefineColor("Down", Color.DOWNTICK);
     HL.DefineColor("Neutral", Color.DARK_GRAY);

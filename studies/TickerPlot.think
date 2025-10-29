@@ -306,7 +306,7 @@ declare real_size;
         rawSum = rawTick;
     }
     else if Display == Display.Relative {
-        rawSum = (rawSum[1] + 1) * rawTick;
+        rawSum = (rawSum[1] + 1) * (rawTick + 1) - 1;
     }
     else {
         rawSum = rawSum[1] + rawTick;
