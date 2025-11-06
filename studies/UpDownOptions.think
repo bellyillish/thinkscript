@@ -243,47 +243,58 @@ declare lower;
     def rawAll;
     def rawTicks;
     def rawRatio;
+    def rawMean;
     switch (Market) {
         case "ALLUSA":
             rawAll   = volume("$PCALL");
             rawTicks = tick_count("$PCALL");
             rawRatio = Fundamental(type, "$PCALL");
+            rawMean  = 0.86;
         case "CBOE Total":
             rawAll   = volume("$CPC");
             rawTicks = tick_count("$CPC");
             rawRatio = Fundamental(type, "$CPC");
+            rawMean  = 0.94;
         case "CBOE Index":
             rawAll  = volume("$CPCI");
             rawTicks = tick_count("$CPCI");
             rawRatio = Fundamental(type, "$CPCI");
+            rawMean  = 1.30;
         case "CBOE Equities":
             rawAll  = volume("$CPCE");
             rawTicks = tick_count("$CPCE");
             rawRatio = Fundamental(type, "$CPCE");
+            rawMean  = 0.78;
         case "NYSE":
             rawAll  = volume("$PCN");
             rawTicks = tick_count("$PCN");
             rawRatio = Fundamental(type, "$PCN");
+            rawMean  = 0.66;
         case "NASDAQ":
             rawAll  = volume("$PCN/Q");
             rawTicks = tick_count("$PCN/Q");
             rawRatio = Fundamental(type, "$PCN/Q");
+            rawMean  = 0.73;
         case "S&P 500":
             rawAll  = volume("$PCSP");
             rawTicks = tick_count("$PCSP");
             rawRatio = Fundamental(type, "$PCSP");
+            rawMean  = 0.78;
         case "NASDAQ 100":
             rawAll  = volume("$PCND");
             rawTicks = tick_count("$PCND");
             rawRatio = Fundamental(type, "$PCND");
+            rawMean  = 0.79;
         case "RUSSELL 2000":
             rawAll  = volume("$PCRL");
             rawTicks = tick_count("$PCRL");
             rawRatio = Fundamental(type, "$PCRL");
+            rawMean  = 0.62;
         case "DJIA":
             rawAll  = volume("$PCI");
             rawTicks = tick_count("$PCI");
             rawRatio = Fundamental(type, "$PCI");
+            rawMean  = 0.64;
     };
 
     def dataAll;
@@ -339,17 +350,20 @@ declare lower;
     def tickDn;
     def up;
     def dn;
+    def mean;
     if Invert {
         tickUp = tickCalls;
         tickDn = tickPuts;
         up     = calls;
         dn     = puts;
+        mean   = 1 / rawMean;
     }
     else {
         tickUp = tickPuts;
         tickDn = tickCalls;
         up     = puts;
         dn     = calls;
+        mean   = rawMean;
     }
 
     # Value
@@ -379,8 +393,9 @@ declare lower;
     # Neutral
     def neutral;
     switch (Display) {
-        case "Percentage" : neutral = 0.5;
-        case "Ratio"      : neutral = 1;
+        case "Percentage" : neutral = mean / (1 + mean);
+        case "Ratio"      : neutral = mean;
+        case "Log Ratio"  : neutral = Log(mean);
         default           : neutral = 0;
     }
 ###
@@ -398,7 +413,7 @@ declare lower;
     UD.DefineColor("Neutral", Color.DARK_GRAY);
     UD.SetDefaultColor(UD.Color("Neutral"));
     UD.AssignValueColor(
-        if isNewPeriod and isActivePeriod[1]
+        if Separators and isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
         else if UD > neutral
             then UD.Color("Up")
@@ -412,7 +427,6 @@ declare lower;
     N.SetDefaultColor(GlobalColor("Line"));
     N.HideBubble();
     N.HideTitle();
-    N.Hide();
 
     # Separators
     AddVerticalLine(

@@ -343,7 +343,7 @@ declare real_size;
     T.DefineColor("Neutral", Color.DARK_GRAY);
     T.SetDefaultColor(T.Color("Neutral"));
     T.AssignValueColor(
-        if isNewPeriod and isActivePeriod[1]
+        if Separators and isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
         else if tick > 0
             then T.Color("Up")
@@ -360,7 +360,7 @@ declare real_size;
     S.DefineColor("Neutral", Color.DARK_GRAY);
     S.SetDefaultColor(S.Color("Neutral"));
     S.AssignValueColor(
-        if isNewPeriod and isActivePeriod[1]
+        if Separators and isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
         else if sum > 0
             then S.Color("Up")
@@ -375,7 +375,7 @@ declare real_size;
     RTH.DefineColor("Value", CreateColor(230, 205, 80));
     RTH.SetDefaultColor(RTH.Color("Value"));
     RTH.AssignValueColor(
-        if isNewPeriod and isActivePeriod[1]
+        if Separators and isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
             else RTH.Color("Value")
     );
@@ -386,7 +386,7 @@ declare real_size;
     ETH.DefineColor("Value", CreateColor(77, 166, 255));
     ETH.SetDefaultColor(ETH.Color("Value"));
     ETH.AssignValueColor(
-        if isNewPeriod and isActivePeriod[1]
+        if Separators and isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
             else ETH.Color("Value")
     );

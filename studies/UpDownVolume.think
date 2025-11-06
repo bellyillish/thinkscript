@@ -362,7 +362,7 @@ declare lower;
     UD.DefineColor("Neutral", Color.DARK_GRAY);
     UD.SetDefaultColor(UD.Color("Neutral"));
     UD.AssignValueColor(
-        if isNewPeriod and isActivePeriod[1]
+        if Separators and isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
         else if UD > neutral
             then UD.Color("Up")
@@ -389,7 +389,6 @@ declare lower;
     N.SetDefaultColor(GlobalColor("Line"));
     N.HideBubble();
     N.HideTitle();
-    N.Hide();
 
     # Separators
     AddVerticalLine(

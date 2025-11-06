@@ -179,12 +179,12 @@ declare upper;
     }
 
     script Opex {
-        input period = 1;
-
-        def DAILY     = 0;
-        def WEEKLY    = 1;
-        def MONTHLY   = 2;
-        def QUARTERLY = 3;
+        input period  = 1;
+        def INTRADAY  = 0;
+        def DAILY     = 1;
+        def WEEKLY    = 2;
+        def MONTHLY   = 3;
+        def QUARTERLY = 4;
 
         def MM;
         def YYYY;
@@ -258,15 +258,11 @@ declare upper;
 
 ### INPUTS ###
     input Period = {
+        "Intraday",
         "Daily",
         default "Weekly",
         "Monthly",
         "Quarterly"
-    };
-
-    input Start = {
-        default "Last Close",
-        "Current Open"
     };
 
     input Calculation = {
@@ -284,6 +280,9 @@ declare upper;
     def isNewPeriod;
     def isLatestPeriod;
     switch (Period) {
+        case "Intraday":
+            isNewPeriod    = Date() != Date()[1];
+            isLatestPeriod = Date() == GetValue(Date(), Chart().endOffset);
         case "Daily":
             isNewPeriod    = Date() != Date()[1];
             isLatestPeriod = Date() == GetValue(Date(), Chart().endOffset);
@@ -314,26 +313,25 @@ declare upper;
 
     def ovRaw;
     switch (Period) {
-        case "Daily":
+        case "Intraday":
             ovRaw = SeriesVolatility(series = 1);
+        case "Daily":
+            ovRaw = SeriesVolatility(series = 2);
         case "Weekly":
-            if expDays == monthlyExpDays {
-                ovRaw = SeriesVolatility(series = 1, expirationType = ExpirationType.REGULAR);
-            }
-            else if Opex(Period).Series == 1 {
-                ovRaw = SeriesVolatility(series = 1, expirationType = ExpirationType.WEEKLYS);
+            if Opex(Period).Series == 1 {
+                ovRaw = SeriesVolatility(series = 2);
             }
             else if Opex(Period).Series == 2 {
-                ovRaw = SeriesVolatility(series = 2, expirationType = ExpirationType.WEEKLYS);
+                ovRaw = SeriesVolatility(series = 3);
             }
             else if Opex(Period).Series == 3 {
-                ovRaw = SeriesVolatility(series = 3, expirationType = ExpirationType.WEEKLYS);
+                ovRaw = SeriesVolatility(series = 4);
             }
             else if Opex(Period).Series == 4 {
-                ovRaw = SeriesVolatility(series = 4, expirationType = ExpirationType.WEEKLYS);
+                ovRaw = SeriesVolatility(series = 5);
             }
             else if Opex(Period).Series == 5 {
-                ovRaw = SeriesVolatility(series = 5, expirationType = ExpirationType.WEEKLYS);
+                ovRaw = SeriesVolatility(series = 6);
             }
             else {
                 ovRaw = Double.NaN;
@@ -368,7 +366,7 @@ declare upper;
     def hh;
     def hl;
     if isLatestPeriod and isNewPeriod {
-        startPrice = if Start == Start."Current Open" then open else close[1];
+        startPrice = if Period == Period.Intraday then open else close[1];
 
         ov = GetValue(ovRaw, end);
         iv = GetValue(imp_volatility, end);
@@ -396,6 +394,8 @@ declare upper;
 
     def hideOnTimeframe;
     switch (Period) {
+        case "Intraday":
+            hideOnTimeFrame = Chart().aggregation > AggregationPeriod.DAY;
         case "Daily":
             hideOnTimeFrame = Chart().aggregation > AggregationPeriod.DAY;
         case "Weekly":

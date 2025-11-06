@@ -467,7 +467,7 @@ declare lower;
     HL.DefineColor("Neutral", Color.DARK_GRAY);
     HL.SetDefaultColor(HL.Color("Neutral"));
     HL.AssignValueColor(
-        if isNewPeriod and isActivePeriod[1]
+        if Separators and isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
         else if HL > neutral
             then HL.Color("Up")
@@ -481,7 +481,6 @@ declare lower;
     N.SetDefaultColor(GlobalColor("Line"));
     N.HideBubble();
     N.HideTitle();
-    N.Hide();
 
     # Separators
     AddVerticalLine(

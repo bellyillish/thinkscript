@@ -186,8 +186,26 @@ declare lower;
         "Signal"
     };
 
-    input Sanitize  = no;
-    input Smoothing = 0;
+    input Period = {
+        default "Chart",
+        "Daily",
+        "Weekly",
+        "Monthly",
+        "MonthlyOPEX",
+        "Quarterly",
+        "QuarterlyOPEX",
+        "Earnings",
+        "Yearly",
+        "CandlesAgo",
+        "SinceDate"
+    };
+
+    @Date input SinceDate = 20250407;
+    input CandlesAgo      = 100;
+    input Separators      = yes;
+    input Sanitize        = no;
+    input Oscillation     = 0;
+    input Smoothing       = 0;
 ###
 
 
@@ -232,7 +250,10 @@ declare lower;
 
 
 ### CALCULATIONS ###
-    # Plots
+    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
+    def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
+
+    # Averages
     def value50;
     def value100;
     def value200;
@@ -260,28 +281,42 @@ declare lower;
 
 
 ### PLOTS ###
-    DefineGlobalColor("Line", CreateColor(48, 48, 48));
+    DefineGlobalColor("Line",       CreateColor(48, 48, 48));
+    DefineGlobalColor("Separator",  CreateColor(32, 32, 32));
+    DefineGlobalColor("Background", CreateColor(12, 12, 12));
 
     # 50
     plot V50 = Filters(value50, 0, Smoothing);
     V50.SetHiding(Display == Display.Signal);
     V50.DefineColor("Value", Color.UPTICK);
-    V50.SetDefaultColor(V50.Color("Value"));
+    V50.AssignValueColor(
+        if Separators and isNewPeriod and isActivePeriod[1]
+            then GlobalColor("Background")
+            else V50.Color("Value")
+    );
 
     # 100
     plot V100 = Filters(value100, 0, Smoothing);
     V100.SetHiding(Display == Display.Signal);
     V100.DefineColor("Value", Color.ORANGE);
-    V100.SetDefaultColor(V100.Color("Value"));
+    V100.AssignValueColor(
+        if Separators and isNewPeriod and isActivePeriod[1]
+            then GlobalColor("Background")
+            else V100.Color("Value")
+    );
 
     # 200
     plot V200 = Filters(value200, 0, Smoothing);
     V200.SetHiding(Display == Display.Signal);
     V200.DefineColor("Value", Color.DOWNTICK);
-    V200.SetDefaultColor(V200.Color("Value"));
+    V200.AssignValueColor(
+        if Separators and isNewPeriod and isActivePeriod[1]
+            then GlobalColor("Background")
+            else V200.Color("Value")
+    );
 
     # Signal
-    plot S = Filters(signal, 0, Smoothing);
+    plot S = Filters(signal, Oscillation, Smoothing);
     S.SetHiding(Display != Display.Signal);
     S.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
     S.DefineColor("Up", Color.UPTICK);
@@ -301,5 +336,12 @@ declare lower;
     N.SetDefaultColor(GlobalColor("Line"));
     N.HideBubble();
     N.HideTitle();
-    N.Hide();
+
+    # Separators
+    AddVerticalLine(
+        visible = Separators and isNewPeriod and isActivePeriod[1],
+        color   = GlobalColor("Separator"),
+        stroke  = Curve.SHORT_DASH,
+        text    = ""
+    );
 ###

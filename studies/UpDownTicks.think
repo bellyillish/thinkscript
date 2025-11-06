@@ -326,7 +326,7 @@ declare lower;
     TK.DefineColor("Neutral", Color.DARK_GRAY);
     TK.SetDefaultColor(TK.Color("Neutral"));
     TK.AssignValueColor(
-        if isNewPeriod and isActivePeriod[1]
+        if Separators and isNewPeriod and isActivePeriod[1]
             then GlobalColor("Background")
         else if TK > neutral
             then TK.Color("Up")
@@ -340,7 +340,6 @@ declare lower;
     N.SetDefaultColor(GlobalColor("Line"));
     N.HideBubble();
     N.HideTitle();
-    N.Hide();
 
     # Separators
     AddVerticalLine(
