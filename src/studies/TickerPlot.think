@@ -1,0 +1,220 @@
+declare lower;
+declare real_size;
+
+#include_once "../lib/Chart.think"
+#include_once "../lib/Value.think"
+#include_once "../lib/Filters.think"
+#include_once "../lib/Periods.think"
+
+
+### INPUTS ###
+    input Ticker = "";
+
+    input Quote = {
+        default "Close",
+        "Open",
+        "High",
+        "Low",
+        "HL2",
+        "HLC3",
+        "OHLC4",
+        "VWAP",
+        "RTH",
+        "ETH"
+    };
+
+    input Display = {
+        default "Logarithmic",
+        "Relative",
+        "Absolute",
+        "Tick"
+    };
+
+    input Period = {
+        default "Chart",
+        "Daily",
+        "Weekly",
+        "Monthly",
+        "MonthlyOPEX",
+        "Quarterly",
+        "QuarterlyOPEX",
+        "Earnings",
+        "Yearly",
+        "CandlesAgo",
+        "SinceDate"
+    };
+
+    @Date input SinceDate = 20250407;
+    input CandlesAgo      = 100;
+    input Separators      = yes;
+    input Sanitize        = no;
+    input Oscillation     = 0;
+    input Smoothing       = 0;
+###
+
+
+### LOOKUPS ###
+    def type;
+    switch (Quote) {
+        case "Open"  : type = FundamentalType.OPEN;
+        case "High"  : type = FundamentalType.HIGH;
+        case "Low"   : type = FundamentalType.LOW;
+        case "HL2"   : type = FundamentalType.HL2;
+        case "HLC3"  : type = FundamentalType.HLC3;
+        case "OHLC4" : type = FundamentalType.OHLC4;
+        case "VWAP"  : type = FundamentalType.VWAP;
+        default      : type = FundamentalType.CLOSE;
+    }
+
+    def rawOpen;
+    def rawClose;
+    if Ticker != "" {
+        rawClose = Fundamental(type, Ticker);
+        rawOpen  = open(Ticker);
+    }
+    else {
+        rawClose = Fundamental(type);
+        rawOpen = open;
+    }
+
+    # Sanitize
+    def dataOpen;
+    def dataClose;
+    if Sanitize {
+        dataOpen  = Value(rawOpen);
+        dataClose = Value(rawClose);
+    }
+    else {
+        dataOpen  = rawOpen;
+        dataClose = rawClose;
+    }
+###
+
+
+### CALCULATIONS ###
+    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
+    def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
+
+    # Logarithmic
+    def logOpen;
+    def logClose;
+    if Display == Display.Logarithmic {
+        logOpen  = Log(dataOpen);
+        logClose = Log(dataClose);
+    }
+    else {
+        logOpen  = dataOpen;
+        logClose = dataClose;
+    }
+
+    # Open
+    def start;
+    if Quote == Quote.RTH and !Chart().isIntradayBar and !Chart().isMultiDay {
+        start = logOpen;
+    }
+    else {
+        start = logClose[1];
+    }
+
+    # Close
+    def end;
+    if Quote == Quote.ETH and Chart().isIntradayBar {
+        end = logClose[1];
+    }
+    else if Quote == Quote.ETH and !Chart().isMultiDay {
+        end = logOpen;
+    }
+    else {
+        end = logClose;
+    }
+
+    # Tick
+    def rawTick;
+    if Display == Display.Relative {
+        rawTick = end / start - 1;
+    }
+    else {
+        rawTick = end - start;
+    }
+
+    # Cumulative
+    def rawSum;
+    if isNewPeriod {
+        rawSum = rawTick;
+    }
+    else if Display == Display.Relative {
+        rawSum = (rawSum[1] + 1) * (rawTick + 1) - 1;
+    }
+    else {
+        rawSum = rawSum[1] + rawTick;
+    }
+
+    # Filters
+    def sum;
+    def tick;
+    if !Chart().isValidBar or !isActivePeriod {
+        tick = Double.NaN;
+        sum  = Double.NaN;
+    }
+    else {
+        tick = Filters(rawTick, Oscillation, Smoothing);
+        sum  = Filters(rawSum, Oscillation, Smoothing);
+    }
+###
+
+
+### PLOTS ###
+    DefineGlobalColor("Line",       CreateColor(48, 48, 48));
+    DefineGlobalColor("Separator",  CreateColor(32, 32, 32));
+    DefineGlobalColor("Background", CreateColor(12, 12, 12));
+
+    # Tick
+    plot T = tick;
+    T.SetHiding(Display != Display.Tick);
+    T.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
+    T.DefineColor("Up", Color.UPTICK);
+    T.DefineColor("Down", Color.DOWNTICK);
+    T.DefineColor("Neutral", Color.DARK_GRAY);
+    T.SetDefaultColor(T.Color("Neutral"));
+    T.AssignValueColor(
+        if Separators and isNewPeriod and isActivePeriod[1]
+            then GlobalColor("Background")
+        else if tick > 0
+            then T.Color("Up")
+        else if tick < 0
+            then T.Color("Down")
+            else T.Color("Neutral")
+    );
+
+    # Cumulative
+    plot S = sum;
+    S.SetHiding(Display == Display.Tick);
+    S.DefineColor("Up", Color.UPTICK);
+    S.DefineColor("Down", Color.DOWNTICK);
+    S.DefineColor("Neutral", Color.DARK_GRAY);
+    S.SetDefaultColor(S.Color("Neutral"));
+    S.AssignValueColor(
+        if Separators and isNewPeriod and isActivePeriod[1]
+            then GlobalColor("Background")
+        else if tick > 0
+            then S.Color("Up")
+        else if tick < 0
+            then S.Color("Down")
+            else S.Color("Neutral")
+    );
+
+    # Line
+    plot N = 0;
+    N.SetDefaultColor(GlobalColor("Line"));
+    N.HideBubble();
+    N.HideTitle();
+    N.Hide();
+
+    # Separators
+    AddVerticalLine(
+        visible = Separators and isNewPeriod and isActivePeriod[1],
+        color   = GlobalColor("Separator"),
+        stroke  = Curve.SHORT_DASH,
+        text    = ""
+    );
+###

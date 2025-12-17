@@ -1,0 +1,125 @@
+declare upper;
+
+#include_once "../lib/Value.think"
+
+
+### INPUTS ###
+    input Quote = {
+        default "Close",
+        "Open",
+        "High",
+        "Low",
+        "HL2",
+        "HLC3",
+        "OHLC4",
+        "VWAP"
+    };
+
+    input Deviations = {
+        default "0",
+        "1",
+        "2",
+        "3",
+        "4"
+    };
+
+    @Date input SinceDate = 19020101;
+    input Sanitize        = no;
+    input ExtendLeft      = no;
+    input ExtendRight     = no;
+###
+
+
+### LOOKUPS ###
+    def type;
+    switch (Quote) {
+        case "Close" : type = FundamentalType.CLOSE;
+        case "Open"  : type = FundamentalType.OPEN;
+        case "High"  : type = FundamentalType.HIGH;
+        case "Low"   : type = FundamentalType.LOW;
+        case "HL2"   : type = FundamentalType.HL2;
+        case "HLC3"  : type = FundamentalType.HLC3;
+        case "OHLC4" : type = FundamentalType.OHLC4;
+        case "VWAP"  : type = FundamentalType.VWAP;
+    }
+
+    def data;
+    if Sanitize {
+        data = Value(Fundamental(type));
+    }
+    else {
+        data = Fundamental(type);
+    }
+###
+
+
+### CALCULATIONS ###
+    def mean = Exp(
+        InertiaAll(
+            data          = Log(data),
+            startDate     = SinceDate,
+            extendToLeft  = ExtendLeft,
+            extendToRight = ExtendRight
+        )
+    );
+
+    def dev = Exp(
+        StDevAll(
+            data          = Log(data / mean),
+            StartDate     = SinceDate,
+            extendToLeft  = ExtendLeft,
+            extendToRight = ExtendRight
+        )
+    );
+###
+
+
+### PLOTS ###
+  plot Regression = mean;
+  Regression.DefineColor("Value", Color.GRAY);
+  Regression.SetDefaultColor(Regression.Color("Value"));
+
+  ### 1 stdev
+  plot Up1 = mean * dev;
+  Up1.SetHiding(Deviations < 1);
+  Up1.DefineColor("Value", Color.DARK_GRAY);
+  Up1.SetDefaultColor(Up1.Color("Value"));
+
+  plot Down1 = mean / dev;
+  Down1.SetHiding(Deviations < 1);
+  Down1.DefineColor("Value", Color.DARK_GRAY);
+  Down1.SetDefaultColor(Down1.Color("Value"));
+
+  ### 2 stdevs
+  plot Up2 = mean * Power(dev, 2);
+  Up2.SetHiding(Deviations < 2);
+  Up2.DefineColor("Value", Color.DARK_GRAY);
+  Up2.SetDefaultColor(Up2.Color("Value"));
+
+  plot Down2 = mean / Power(dev, 2);
+  Down2.SetHiding(Deviations < 2);
+  Down2.DefineColor("Value", Color.DARK_GRAY);
+  Down2.SetDefaultColor(Down2.Color("Value"));
+
+  ### 3 stdevs
+  plot Up3 = mean * Power(dev, 3);
+  Up3.SetHiding(Deviations < 3);
+  Up3.DefineColor("Value", Color.DARK_GRAY);
+  Up3.SetDefaultColor(Up3.Color("Value"));
+
+  plot Down3 = mean / Power(dev, 3);
+  Down3.SetHiding(Deviations < 3);
+  Down3.DefineColor("Value", Color.DARK_GRAY);
+  Down3.SetDefaultColor(Down3.Color("Value"));
+
+  ### 4 stdevs
+  plot Up4 = mean * Power(dev, 4);
+  Up4.SetHiding(Deviations < 4);
+  Up4.DefineColor("Value", Color.DARK_GRAY);
+  Up4.SetDefaultColor(Up4.Color("Value"));
+
+  plot Down4 = mean / Power(dev, 4);
+  Down4.SetHiding(Deviations < 4);
+  Down4.DefineColor("Value", Color.DARK_GRAY);
+  Down4.SetDefaultColor(Down4.Color("Value"));
+###

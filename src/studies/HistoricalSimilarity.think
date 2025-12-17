@@ -1,0 +1,311 @@
+declare lower;
+declare zerobase;
+
+#include_once "../lib/Chart.think"
+#include_once "../lib/Value.think"
+
+
+### SCRIPTS ###
+    script CompareSelf {
+        input Data   = 0;
+        input Period = 0;
+        input Offset = 0;
+
+        def mean1 = fold i1 = 0 to Period with v1
+            do v1 + GetValue(Data, i1) / Period;
+
+        def std1 = Sqrt(Max(0,
+            (fold i2 = 0 to Period with v2 do v2 + Sqr(GetValue(Data, i2)) / Period) - Sqr(mean1)
+        ));
+
+        def mean2 = GetValue(mean1, Offset);
+        def std2  = GetValue(std1, Offset);
+
+        def mean3 = fold i3 = 0 to Period with v3
+            do v3 + Sqr((GetValue(Data, i3) - mean1) / std1 - (GetValue(Data, i3 + Offset) - mean2) / std2) / Period;
+
+        def mean4 = fold i4 = 0 to Period with v4
+            do v4 + GetValue(Data, i4) * GetValue(Data, i4 + Offset) / Period;
+
+        def corr = (mean4 - mean1 * mean2) / (std1 * std2);
+
+        plot S = if std1 == 0 or std2 == 0 then 0 else 1 / (1 + mean3);
+        S.hide();
+
+        plot C = if std1 == 0 or std2 == 0 then 0 else (corr + 1) / 2;
+        C.hide();
+    }
+###
+
+
+### INPUTS ###
+    input Ticker = "";
+
+    input Quote = {
+        default "Close",
+        "Open",
+        "High",
+        "Low",
+        "HL2",
+        "HLC3",
+        "OHLC4",
+        "VWAP",
+        "IV",
+        "Volume",
+        "RSI"
+    };
+
+    input Display = {
+        default "Lower",
+        "Upper",
+        "Both"
+    };
+
+    input Method = {
+        default "Z-Distance of MA Deviation",
+        "Z-Distance of Value",
+        "Z-Distance of Returns",
+        "Correlation of Returns"
+    };
+
+    input Threshold     = 0.8;
+    input CompareLength = 12;
+    input AverageLength = 12;
+    input CompareOffset = 0;
+    input LookBack      = 12;
+    input LookAhead     = 0;
+    input CalcAhead     = 6;
+    input Sanitize      = no;
+    input Labels        = yes;
+    input LabelSize     = FontSize.SMALL;
+###
+
+
+### LOOKUPS ###
+    def type;
+    switch (Quote) {
+        case "Open"   : type = FundamentalType.OPEN;
+        case "High"   : type = FundamentalType.HIGH;
+        case "Low"    : type = FundamentalType.LOW;
+        case "HL2"    : type = FundamentalType.HL2;
+        case "HLC3"   : type = FundamentalType.HLC3;
+        case "OHLC4"  : type = FundamentalType.OHLC4;
+        case "VWAP"   : type = FundamentalType.VWAP;
+        case "IV"     : type = FundamentalType.IMP_VOLATILITY;
+        case "Volume" : type = FundamentalType.VOLUME;
+        default       : type = FundamentalType.CLOSE;
+    }
+
+    def rawData;
+    if Ticker != "" {
+        rawData = Fundamental(type, Ticker);
+    }
+    else {
+        rawData = Fundamental(type);
+    }
+
+    def cleanData;
+    if Sanitize {
+        cleanData = Value(rawData);
+    }
+    else {
+        cleanData = rawData;
+    }
+
+    def data;
+    if Quote == Quote.RSI {
+        data = RSI(price = cleanData);
+    }
+    else {
+        data = cleanData;
+    }
+###
+
+
+### CALCULATIONS ###
+    def mostRecentBar = Chart().endBar - CompareOffset;
+    def isRecentBar   = BarNumber() <= mostRecentBar and BarNumber() >= mostRecentBar - CompareLength + 1;
+    def recentOffset  = BarNumber() - mostRecentBar;
+    def isTooEarly    = BarNumber() <= CompareLength;
+
+    # Value
+    def value;
+    if Method == Method."Z-Distance of MA Deviation" {
+        value = data / Average(data, AverageLength) - 1;
+    }
+    else if Method == Method."Z-Distance of Value" {
+        value = data;
+    }
+    else {
+        value = data / data[1] - 1;
+    }
+
+    # Score
+    def score;
+    if isTooEarly or isRecentBar {
+        score = 0;
+    }
+    else if Method == Method."Correlation of Returns" {
+        score = CompareSelf(value, CompareLength, recentOffset).C;
+    }
+    else {
+        score = CompareSelf(value, CompareLength, recentOffset).S;
+    }
+
+    def best = HighestAll(score);
+
+    # Matches
+    def isMatch;
+    if isTooEarly or isRecentBar or !Chart().isValidBar {
+        isMatch = no;
+    }
+    else if score >=  Threshold and GetMaxValueOffset(score, CompareLength)[-Floor(CompareLength / 2)] == Floor(CompareLength / 2) {
+        isMatch = yes;
+    }
+    else {
+        isMatch = no;
+    }
+
+    # Labels
+    def fwdReturns;
+    if IsNaN(close[-CalcAhead]) {
+        fwdReturns = 0;
+    }
+    else {
+        fwdReturns = close[-CalcAhead] / close - 1;
+    }
+
+    def upSum;
+    def dnSum;
+    def upMatches;
+    def dnMatches;
+    def ncMatches;
+    if isMatch {
+        upSum     = upSum[1] + fwdReturns * (fwdReturns > 0);
+        dnSum     = dnSum[1] + fwdReturns * (fwdReturns < 0);
+        upMatches = upMatches[1] + (fwdReturns > 0);
+        dnMatches = dnMatches[1] + (fwdReturns < 0);
+        ncMatches = ncMatches[1] + (fwdReturns == 0);
+    }
+    else {
+        upSum     = upSum[1];
+        dnSum     = dnSum[1];
+        upMatches = upMatches[1];
+        dnMatches = dnMatches[1];
+        ncMatches = ncMatches[1];
+    }
+
+    def upAvg     = upSum / upMatches;
+    def dnAvg     = dnSum / dnMatches;
+    def upPercent = upMatches / (upMatches + dnMatches + ncMatches);
+
+    def isPrevBar = fold ip = 0 to LookBack with vp
+        do vp or GetValue(isMatch, -ip - 1) > 0;
+
+    def isNextBar = fold in = 0 to LookAhead with vn
+        do vn or GetValue(isMatch, in + 1) > 0;
+###
+
+
+### PLOTS ###
+    DefineGlobalColor("Threshold", CreateColor(64, 64, 64));
+    DefineGlobalColor("Window",    CreateColor(28, 28, 28));
+    DefineGlobalColor("Bar",       CreateColor(48, 48, 48));
+    DefineGlobalColor("Recent",    CreateColor(128, 116, 36));
+    DefineGlobalColor("Previous",  CreateColor(152, 152, 152));
+    DefineGlobalColor("Match",     CreateColor(246, 246, 246));
+    DefineGlobalColor("Neutral",   CreateColor(108, 108, 108));
+    DefineGlobalColor("Up",        CreateColor(43, 116, 68));
+    DefineGlobalColor("Dn",        CreateColor(128, 51, 51));
+
+    # Indicator
+    plot S = score;
+    S.SetHiding(Display == Display.Upper);
+    S.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
+    S.DefineColor("Score", CreateColor(32, 32, 32));
+    S.DefineColor("Match", CreateColor(172, 172, 172));
+    S.SetDefaultColor(S.Color("Match"));
+    S.AssignValueColor(
+        if isMatch and fwdReturns > 0
+            then Color.UPTICK
+        else if isMatch and fwdReturns < 0
+            then Color.DOWNTICK
+        else if isMatch
+            then S.Color("Match")
+            else S.Color("Score")
+    );
+
+    # Window
+    AddCloud(
+        data1  = if isRecentBar then Double.POSITIVE_INFINITY else Double.NaN,
+        data2  = if isRecentBar then Double.NEGATIVE_INFINITY else Double.NaN,
+        color1 = GlobalColor("Window"),
+        color2 = GlobalColor("Window")
+    );
+
+    # Chart
+    AssignPriceColor(
+        if Display == Display.Lower
+            then Color.CURRENT
+        else if isMatch
+            then GlobalColor("Match")
+        else if isRecentBar
+            then GlobalColor("Recent")
+        else if isTooEarly
+            then GlobalColor("Window")
+        else if isPrevBar
+            then GlobalColor("Previous")
+        else if isNextBar
+            then Color.CURRENT
+            else GlobalColor("Bar")
+    );
+
+    # Threshold
+    plot T = Threshold;
+    T.SetHiding(Display == Display.Upper);
+    T.SetDefaultColor(GlobalColor("Threshold"));
+    T.HideBubble();
+    T.HideTitle();
+
+    # Separators
+    AddVerticalLine(
+        visible = isRecentBar != isRecentBar[1],
+        color   = GlobalColor("Bar"),
+        text    = ""
+    );
+    AddVerticalLine(
+        visible = Display == Display.Upper and isTooEarly != isTooEarly[1],
+        color   = GlobalColor("Bar"),
+        text    = ""
+    );
+
+    # Labels
+    AddLabel(
+        visible  = Labels,
+        size     = LabelSize,
+        text     = " Best: " + best + " ",
+        location = Location.TOP_RIGHT,
+        color    = GlobalColor("Previous")
+    );
+    AddLabel(
+        visible  = Labels and CalcAhead > 0 and !IsNaN(dnAvg),
+        size     = LabelSize,
+        color    = GlobalColor("Dn"),
+        location = Location.TOP_RIGHT,
+        text     = " Dn Avg " + AsPercent(dnAvg) + " "
+    );
+    AddLabel(
+        visible  = Labels and CalcAhead > 0 and !IsNaN(upAvg),
+        size     = LabelSize,
+        color    = GlobalColor("Up"),
+        location = Location.TOP_RIGHT,
+        text     = " Up Avg " + AsPercent(upAvg) + " "
+    );
+    AddLabel(
+        visible  = Labels,
+        size     = LabelSize,
+        text     = " Found " + (upMatches + dnMatches + ncMatches) + " (" + AsPercent(upPercent) + " Positive) ",
+        location = Location.TOP_RIGHT,
+        color    = GlobalColor("Recent")
+    );
+###

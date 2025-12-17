@@ -1,0 +1,91 @@
+declare lower;
+
+
+### INPUTS ###
+    input Display = {
+        default "Ratio",
+        "Overlay"
+    };
+
+    input Length      = 20;
+    input Oscillation = 0;
+    input Smoothing   = 0;
+###
+
+
+### LOOKUPS ###
+    def rawVI = imp_volatility();
+    def rawVH = HistoricalVolatility(Length);
+###
+
+
+### CALCULATIONS ###
+    def rawRatio = Log(rawVI / rawVH);
+
+    # Oscillation
+    def oscVI;
+    def oscVH;
+    def oscRatio;
+    if Oscillation > 1 {
+        oscVI    = rawVI    - Average(rawVI, Oscillation);
+        oscVH    = rawVH    - Average(rawVH, Oscillation);
+        oscRatio = rawRatio - Average(rawRatio, Oscillation);
+    }
+    else {
+        oscVI    = rawVI;
+        oscVH    = rawVH;
+        oscRatio = rawRatio;
+    }
+
+    # Smoothing
+    def vi;
+    def vh;
+    def ratio;
+    if Smoothing > 1 {
+        vi    = Inertia(oscVI, Smoothing);
+        vh    = Inertia(oscVH, Smoothing);
+        ratio = Inertia(oscRatio, Smoothing);
+    }
+    else {
+        vi    = oscVI;
+        vh    = oscVH;
+        ratio = oscRatio;
+    }
+###
+
+
+### PLOTS ###
+    DefineGlobalColor("Line", CreateColor(48, 48, 48));
+
+    # Implied
+    plot I = vi;
+    I.SetHiding(Display != Display.Overlay);
+    I.DefineColor("Value", Color.UPTICK);
+    I.SetDefaultColor(I.Color("Value"));
+
+    # Historical
+    plot H = vh;
+    H.SetHiding(Display != Display.Overlay);
+    H.DefineColor("Value", Color.DOWNTICK);
+    H.SetDefaultColor(H.Color("Value"));
+
+    # Ratio
+    plot R = ratio;
+    R.SetHiding(Display != Display.Ratio);
+    R.DefineColor("Neutral", Color.DARK_GRAY);
+    R.SetDefaultColor(R.Color("Neutral"));
+    R.AssignValueColor(
+        if ratio > 0
+            then I.Color("Value")
+        else if ratio < 0
+            then H.Color("Value")
+            else R.Color("Neutral")
+    );
+
+    # Mid
+    plot Mid = 0;
+    Mid.SetHiding(Display != Display.Ratio);
+    Mid.SetDefaultColor(GlobalColor("Line"));
+    Mid.HideBubble();
+    Mid.HideTitle();
+###

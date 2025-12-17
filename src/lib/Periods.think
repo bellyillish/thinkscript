@@ -1,0 +1,52 @@
+#include_once "../lib/Date.think"
+#include_once "../lib/Chart.think"
+
+script Periods {
+    input period  = "Chart";
+    input since   = 20250407;
+    input candles = 100;
+
+    def isStart     = Chart().isStart;
+    def endBar      = Chart().endBar;
+    def aggregation = GetAggregationPeriod();
+
+    def isNew;
+    if period == "Daily" and aggregation <= AggregationPeriod.FOUR_HOURS {
+        isNew = isStart or Date() != Date()[1];
+    }
+    else if period == "Weekly" and aggregation <= AggregationPeriod.TWO_DAYS {
+        isNew = isStart or Date().yyyyww != Date().yyyyww[1];
+    }
+    else if period == "Monthly" and aggregation <= AggregationPeriod.WEEK {
+        isNew = isStart or Date().yyyymm != Date().yyyymm[1];
+    }
+    else if period == "MonthlyOPEX" and aggregation <= AggregationPeriod.WEEK {
+        isNew = isStart or Date().yyyymmOpex != Date().yyyymmOpex[1];
+    }
+    else if period == "Quarterly" and aggregation <= AggregationPeriod.MONTH {
+        isNew = isStart or Date().yyyyq != Date().yyyyq[1];
+    }
+    else if period == "QuarterlyOPEX" and aggregation <= AggregationPeriod.MONTH {
+        isNew = isStart or Date().yyyyqOpex != Date().yyyyqOpex[1];
+    }
+    else if period == "Earnings" and aggregation <= AggregationPeriod.MONTH {
+        isNew = isStart or Date().lastEarnings != Date().lastEarnings[1];
+    }
+    else if period == "Yearly" and aggregation <= AggregationPeriod.QUARTER {
+        isNew = isStart or Date().yyyy != Date().yyyy[1];
+    }
+    else if period == "SinceDate" {
+        isNew = Date() >= since and (Date()[1] < since or isStart);
+    }
+    else if period == "CandlesAgo" {
+        isNew = isStart and candles > endBar or BarNumber() + candles == endBar;
+    }
+    else {
+        isNew = isStart;
+    }
+
+    def isActive = isNew or isActive[1];
+
+    plot P = isNew;
+    P.hide();
+}

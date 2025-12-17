@@ -1,0 +1,47 @@
+script Date {
+    def yyyymmdd = GetYYYYMMDD();
+    def yyyy     = GetYear();
+    def mm       = GetMonth();
+    def doy      = GetDay();
+    def dom      = GetDayOfMonth(yyyymmdd);
+    def dow      = GetDayOfWeek(yyyymmdd);
+    def dowj1    = GetDayOfWeek(yyyy * 10000 + 0101);
+    def ww       = GetWeek();
+    def q        = Ceil(mm / 3);
+    def yyyyq    = yyyy * 10 + q;
+    def yyyymm   = yyyy * 100 + mm;
+
+    def minus = if yyyy > yyyy[1] and ww >= ww[1] then 1
+        else if ww != ww[1] then 0
+        else minus[1];
+
+    def yyyyww = (yyyy - minus) * 100 + ww;
+
+    def isAfterOpex    = (dom - 14 - if dow > 5 then dow - 5 else dow + 2) > 0;
+    def isEndOfQuarter = mm % 3 == 0;
+
+    def qOpex = if q + isAfterOpex * isEndOfQuarter <= 4
+        then q + isAfterOpex * isEndOfQuarter
+        else 1;
+
+    def mmOpex = if mm + isAfterOpex <= 12
+        then mm + isAfterOpex
+        else 1;
+
+    def yyyyOpex = if mm + isAfterOpex <= 12
+        then yyyy
+        else yyyy + 1;
+
+    def yyyyqOpex  = yyyyOpex * 10  + qOpex;
+    def yyyymmOpex = yyyyOpex * 100 + mmOpex;
+
+    def isOpexDay  = Next3rdFriday(0) == 0;
+    def isOpexWeek = isOpexDay or Next3rdFriday() < 5;
+
+    def lastEarnings = if HasEarnings(EarningTime.BEFORE_MARKET) or HasEarnings(EarningTime.AFTER_MARKET)[1]
+        then GetYYYYMMDD()
+        else lastEarnings[1];
+
+    plot P = yyyymmdd;
+    P.hide();
+}

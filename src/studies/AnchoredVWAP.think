@@ -1,0 +1,109 @@
+declare upper;
+
+#include_once "../lib/Chart.think"
+#include_once "../lib/Value.think"
+#include_once "../lib/Periods.think"
+
+
+### INPUTS ###
+    input Anchor = {
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "HL2",
+        "HLC3",
+        "OHLC4",
+        default "VWAP"
+    };
+
+    input Period = {
+        default "Chart",
+        "Daily",
+        "Weekly",
+        "Monthly",
+        "MonthlyOPEX",
+        "Quarterly",
+        "QuarterlyOPEX",
+        "Earnings",
+        "Yearly",
+        "CandlesAgo",
+        "SinceDate"
+    };
+
+    @Date input SinceDate = 20250407;
+    input CandlesAgo      = 100;
+    input Separators      = yes;
+    input Sanitize        = no;
+###
+
+
+### LOOKUPS ###
+    def type;
+    switch (Anchor) {
+        case "VWAP"  : type = FundamentalType.VWAP;
+        case "Close" : type = FundamentalType.CLOSE;
+        case "Open"  : type = FundamentalType.OPEN;
+        case "High"  : type = FundamentalType.HIGH;
+        case "Low"   : type = FundamentalType.LOW;
+        case "HL2"   : type = FundamentalType.HL2;
+        case "HLC3"  : type = FundamentalType.HLC3;
+        case "OHLC4" : type = FundamentalType.OHLC4;
+    }
+
+    def data;
+    if Sanitize {
+        data = Value(Fundamental(type));
+    }
+    else {
+        data = Fundamental(type);
+    }
+###
+
+
+### CALCULATIONS ###
+    def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
+    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
+
+    def vwapSum;
+    def volumeSum;
+    if !Chart().isValidBar or !isActivePeriod {
+        volumeSum = Double.NaN;
+        vwapSum   = Double.NaN;
+    }
+    else if isNewPeriod or IsNaN(vwapSum[1] + volumeSum[1]) {
+        vwapSum   = volume * data;
+        volumeSum = volume;
+    }
+    else {
+        vwapSum   = vwapSum [1]  + volume * data;
+        volumeSum = volumeSum[1] + volume;
+    }
+
+    def anchored = vwapSum / volumeSum;
+###
+
+
+### PLOTS ###
+    DefineGlobalColor("Separator",  CreateColor(32, 32, 32));
+    DefineGlobalColor("Background", CreateColor(12, 12, 12));
+
+    # VWAP
+    plot AnchoredVWAP = anchored;
+    AnchoredVWAP.DefineColor("Value", Color.LIGHT_GRAY);
+    AnchoredVWAP.SetDefaultColor(AnchoredVWAP.Color("Value"));
+
+    AnchoredVWAP.AssignValueColor(
+        if isNewPeriod
+            then GlobalColor("Background")
+            else AnchoredVWAP.Color("Value")
+    );
+
+    # Separators
+    AddVerticalLine(
+        visible = Separators and isNewPeriod and isActivePeriod[1],
+        color   = GlobalColor("Separator"),
+        stroke  = Curve.SHORT_DASH,
+        text    = ""
+    );
+###

@@ -1,0 +1,146 @@
+declare upper;
+
+
+### SCRIPTS ###
+    script GetAverage {
+        input Period  = 21;
+        input AvgType = AverageType.EXPONENTIAL;
+        input Quote   = FundamentalType.CLOSE;
+        input Daily   = yes;
+
+        def value;
+        def length;
+        if Daily and Chart().isMultiDay {
+            value  = Fundamental(Quote);
+            length = Round(Period * AggregationPeriod.DAY / GetAggregationPeriod(), 0);
+        }
+        else if Daily {
+            value  = Fundamental(Quote, GetSymbol(), AggregationPeriod.DAY);
+            length = Period;
+        }
+        else {
+            value  = Fundamental(Quote);
+            length = Period;
+        }
+
+        def avg;
+        if length > 1 {
+            avg = MovingAverage(AvgType, value, length);
+        }
+        else {
+            avg = Double.NaN;
+        }
+
+        plot P = avg;
+        P.Hide();
+    }
+###
+
+
+### INPUTS ###
+    input Method = AverageType.EXPONENTIAL;
+
+    input Quote = {
+        default "Close",
+        "Open",
+        "High",
+        "Low",
+        "HL2",
+        "HLC3",
+        "OHLC4",
+        "VWAP"
+    };
+
+    input Theme = {
+        "Light",
+        default "Medium",
+        "Dark"
+    };
+
+    input Daily = yes;
+###
+
+
+### LOOKUPS ###
+    def type;
+    switch (Quote) {
+        case "Open"  : type = FundamentalType.OPEN;
+        case "High"  : type = FundamentalType.HIGH;
+        case "Low"   : type = FundamentalType.LOW;
+        case "HL2"   : type = FundamentalType.HL2;
+        case "HLC3"  : type = FundamentalType.HLC3;
+        case "OHLC4" : type = FundamentalType.OHLC4;
+        case "VWAP"  : type = FundamentalType.VWAP;
+        default      : type = FundamentalType.CLOSE;
+    }
+###
+
+
+### PLOTS ###
+    plot A5 = GetAverage(5, Method, type, Daily);
+    A5.DefineColor("Light", CreateColor(255, 97, 97));
+    A5.DefineColor("Medium", CreateColor(128, 51, 51));
+    A5.DefineColor("Dark", CreateColor(61, 25, 25));
+    A5.AssignValueColor(A5.Color(Theme));
+    A5.Hide();
+
+    plot A8 = GetAverage(8, Method, type, Daily);
+    A8.DefineColor("Light", CreateColor(58, 157, 155));
+    A8.DefineColor("Medium", CreateColor(36, 104, 103));
+    A8.DefineColor("Dark", CreateColor(20, 49, 49));
+    A8.AssignValueColor(A8.Color(Theme));
+    A8.Hide();
+
+    plot A13 = GetAverage(13, Method, type, Daily);
+    A13.DefineColor("Light", CreateColor(217, 122, 74));
+    A13.DefineColor("Medium", CreateColor(118, 70, 41));
+    A13.DefineColor("Dark", CreateColor(57, 36, 23));
+    A13.AssignValueColor(A13.Color(Theme));
+
+    plot A21 = GetAverage(21, Method, type, Daily);
+    A21.DefineColor("Light", CreateColor(90, 111, 234));
+    A21.DefineColor("Medium", CreateColor(56, 65, 168));
+    A21.DefineColor("Dark", CreateColor(30, 36, 82));
+    A21.AssignValueColor(A21.Color(Theme));
+
+    plot A34 = GetAverage(34, Method, type, Daily);
+    A34.DefineColor("Light", CreateColor(255, 159, 67));
+    A34.DefineColor("Medium", CreateColor(143, 90, 35));
+    A34.DefineColor("Dark", CreateColor(66, 47, 22));
+    A34.AssignValueColor(A34.Color(Theme));
+    A34.Hide();
+
+    plot A55 = GetAverage(55, Method, type, Daily);
+    A55.DefineColor("Light", CreateColor(77, 166, 255));
+    A55.DefineColor("Medium", CreateColor(50, 108, 171));
+    A55.DefineColor("Dark", CreateColor(27, 54, 86));
+    A55.AssignValueColor(A55.Color(Theme));
+
+    plot A89 = GetAverage(89, Method, type, Daily);
+    A89.DefineColor("Light", CreateColor(230, 205, 80));
+    A89.DefineColor("Medium", CreateColor(128, 115, 36));
+    A89.DefineColor("Dark", CreateColor(59, 54, 23));
+    A89.AssignValueColor(A89.Color(Theme));
+    A89.Hide();
+
+    plot A144 = GetAverage(144, Method, type, Daily);
+    A144.DefineColor("Light", CreateColor(155, 106, 229));
+    A144.DefineColor("Medium", CreateColor(93, 63, 166));
+    A144.DefineColor("Dark", CreateColor(50, 37, 82));
+    A144.AssignValueColor(A144.Color(Theme));
+    A144.Hide();
+
+    plot A233 = GetAverage(233, Method, type, Daily);
+    A233.DefineColor("Light", CreateColor(229, 115, 155));
+    A233.DefineColor("Medium", CreateColor(152, 63, 89));
+    A233.DefineColor("Dark", CreateColor(75, 39, 52));
+    A233.AssignValueColor(A233.Color(Theme));
+    A233.Hide();
+
+    plot A377 = GetAverage(377, Method, type, Daily);
+    A377.DefineColor("Light", CreateColor(92, 201, 119));
+    A377.DefineColor("Medium", CreateColor(43, 116, 68));
+    A377.DefineColor("Dark", CreateColor(23, 54, 34));
+    A377.AssignValueColor(A377.Color(Theme));
+    A377.Hide();
+###

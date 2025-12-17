@@ -1,0 +1,188 @@
+declare lower;
+
+#include_once "../lib/Chart.think"
+#include_once "../lib/Value.think"
+#include_once "../lib/Filters.think"
+#include_once "../lib/Periods.think"
+
+
+### INPUTS ###
+    input Market = {
+        default "ALLUSA",
+        "NYSE",
+        "NASDAQ",
+        "S&P 500",
+        "NASDAQ 100",
+        "RUSSELL 2000",
+        "DJIA"
+    };
+
+    input Quote = {
+        default "Close",
+        "Open",
+        "High",
+        "Low",
+        "HL2",
+        "HLC3",
+        "OHLC4"
+    };
+
+    input Display = {
+        default "Difference",
+        "Percentage",
+        "Ratio",
+        "Log Ratio",
+        "Cumulative"
+    };
+
+    input Period = {
+        default "Chart",
+        "Daily",
+        "Weekly",
+        "Monthly",
+        "MonthlyOPEX",
+        "Quarterly",
+        "QuarterlyOPEX",
+        "Earnings",
+        "Yearly",
+        "CandlesAgo",
+        "SinceDate"
+    };
+
+    @Date input SinceDate = 20250407;
+    input CandlesAgo      = 100;
+    input Separators      = yes;
+    input Sanitize        = no;
+    input Oscillation     = 0;
+    input Smoothing       = 0;
+###
+
+
+### LOOKUPS ###
+    def type;
+    switch (Quote) {
+        case "Open"  : type = FundamentalType.OPEN;
+        case "High"  : type = FundamentalType.HIGH;
+        case "Low"   : type = FundamentalType.LOW;
+        case "HL2"   : type = FundamentalType.HL2;
+        case "HLC3"  : type = FundamentalType.HLC3;
+        case "OHLC4" : type = FundamentalType.OHLC4;
+        default      : type = FundamentalType.CLOSE;
+    }
+
+    # Lookup
+    def rawTick;
+    def rawAll;
+    switch (Market) {
+        case "ALLUSA":
+            rawTick = Fundamental(type, "$TIKUS");
+            rawAll  = close("$ADVUS") + close("$DECLUS") + close("$UNCHUS");
+        case "NYSE":
+            rawTick = Fundamental(type, "$TICK");
+            rawAll  = close("$ADVN") + close("$DECN") + close("$UNCN");
+        case "NASDAQ":
+            rawTick = Fundamental(type, "$TICK/Q");
+            rawAll  = close("$ADVN/Q") + close("$DECN/Q") + close("$UNCN/Q");
+        case "S&P 500":
+            rawTick = Fundamental(type, "$TIKSP");
+            rawAll  = close("$ADVSP") + close("$DECLSP") + close("$UNCHSP");
+        case "NASDAQ 100":
+            rawTick = Fundamental(type, "$TIKND");
+            rawAll  = close("$ADVND") + close("$DECLND") + close("$UNCHND");
+        case "RUSSELL 2000":
+            rawTick = Fundamental(type, "$TIKRL");
+            rawAll  = close("$ADVRL") + close("$DECLRL") + close("$UNCHRL");
+        case "DJIA":
+            rawTick = Fundamental(type, "$TIKI");
+            rawAll  = close("$ADVI") + close("$DECLI") + close("$UNCHI");
+    }
+
+    def tick;
+    def all;
+    if Sanitize {
+        tick = Value(rawTick);
+        all  = Value(rawAll);
+    }
+    else {
+        tick = rawTick;
+        all  = rawAll;
+    }
+###
+
+
+### CALCULATIONS ###
+    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
+    def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
+
+    # Up/Down tick
+    def up = (all + tick) / 2;
+    def dn = (all - tick) / 2;
+
+    # Value
+    def rawValue;
+    switch (Display) {
+        case "Percentage" : rawValue = up / all;
+        case "Ratio"      : rawValue = up / dn;
+        case "Log Ratio"  : rawValue = Log(up / dn);
+        default           : rawValue = tick;
+    }
+
+    def filteredValue = Filters(rawValue, Oscillation, Smoothing);
+
+    # Cumulative
+    def value;
+    if !Chart().isValidBar or !isActivePeriod {
+        value = Double.NaN;
+    }
+    else if isNewPeriod or Display != Display.Cumulative {
+        value = filteredValue;
+    }
+    else {
+        value = value[1] + filteredValue;
+    }
+
+    # Neutral
+    def neutral;
+    switch (Display) {
+        case "Percentage" : neutral = 0.5;
+        case "Ratio"      : neutral = 1;
+        default           : neutral = 0;
+    }
+###
+
+
+### PLOTS ###
+    DefineGlobalColor("Line",       CreateColor(48, 48, 48));
+    DefineGlobalColor("Separator",  CreateColor(32, 32, 32));
+    DefineGlobalColor("Background", CreateColor(12, 12, 12));
+
+    # Value
+    plot TK = value;
+    TK.DefineColor("Up", Color.UPTICK);
+    TK.DefineColor("Down", Color.DOWNTICK);
+    TK.DefineColor("Neutral", Color.DARK_GRAY);
+    TK.SetDefaultColor(TK.Color("Neutral"));
+    TK.AssignValueColor(
+        if Separators and isNewPeriod and isActivePeriod[1]
+            then GlobalColor("Background")
+        else if TK > neutral
+            then TK.Color("Up")
+        else if TK < neutral
+            then TK.Color("Down")
+            else TK.Color("Neutral")
+    );
+
+    # Line
+    plot N = neutral;
+    N.SetDefaultColor(GlobalColor("Line"));
+    N.HideBubble();
+    N.HideTitle();
+
+    # Separators
+    AddVerticalLine(
+        visible = Separators and isNewPeriod and isActivePeriod[1],
+        color   = GlobalColor("Separator"),
+        stroke  = Curve.SHORT_DASH,
+        text    = ""
+    );
+###

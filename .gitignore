@@ -1,2 +1,5 @@
 @docs/
+node_modules/
+dist/
+package-lock.json
 *.code-workspace

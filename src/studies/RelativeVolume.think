@@ -1,0 +1,156 @@
+declare lower;
+declare zerobase;
+
+#include_once "../lib/Chart.think"
+#include_once "../lib/Value.think"
+#include_once "../lib/Filters.think"
+
+
+### INPUTS ###
+    input Source = {
+        default "Ticker",
+        "ALLUSA",
+        "NYSE",
+        "NASDAQ",
+        "S&P 500",
+        "NASDAQ 100",
+        "RUSSELL 2000",
+        "DJIA"
+    };
+
+    input Ticker = "";
+
+    input Display = {
+        default "Relative",
+        "Absolute"
+    };
+
+    input Length     = 20;
+    input Deviations = 2.0;
+    input Negative   = yes;
+    input Sanitize   = no;
+    input Smoothing  = 0;
+###
+
+
+### LOOKUPS ###
+    # Lookup
+    def rawVolume;
+    def rawClose;
+    switch (Source) {
+        case "ALLUSA":
+            rawVolume = close("$TVOLUS") * 1000;
+            rawClose  = close("$DWCF");
+        case "NYSE":
+            rawVolume = close("$TVOL") * 1000;
+            rawClose  = close("NYA");
+        case "NASDAQ":
+            rawVolume = close("$TVOL/Q") * 1000;
+            rawClose  = close("$COMP");
+        case "S&P 500":
+            rawVolume = close("$TVOLSP") * 1000;
+            rawClose  = close("SPX");
+        case "NASDAQ 100":
+            rawVolume = close("$TVOLND") * 1000;
+            rawClose  = close("NDX");
+        case "RUSSELL 2000":
+            rawVolume = close("$TVOLRL") * 1000;
+            rawClose  = close("RUT");
+        case "DJIA":
+            rawVolume = close("$TVOLI") * 1000;
+            rawClose  = close("$DJI");
+        default:
+            if Ticker != "" {
+                rawVolume = volume(Ticker);
+                rawClose  = close(Ticker);
+            }
+            else {
+                rawVolume = volume;
+                rawClose  = close;
+            }
+    }
+
+    # Sanitize
+    def dataVolume;
+    def dataClose;
+    if Sanitize {
+        dataVolume = Value(rawVolume);
+        dataClose  = Value(rawClose);
+    }
+    else {
+        dataVolume = rawVolume;
+        dataClose  = rawClose;
+    }
+###
+
+
+### CALCULATIONS ###
+    # Internals
+    def tickVolume;
+    if Chart().isIntradayBar and Source != Source.Ticker {
+        tickVolume = dataVolume - dataVolume[1];
+    }
+    else {
+        tickVolume = dataVolume;
+    }
+
+    # Relative
+    def oscVolume  = Filters(tickVolume, Length, Smoothing);
+    def volumeDevs = StDev(tickVolume, Length);
+    def relVolume  = if !Negative
+        then Max(0, oscVolume / volumeDevs)
+        else oscVolume / volumeDevs;
+###
+
+
+### PLOTS ###
+    DefineGlobalColor("Line",       CreateColor(48, 48, 48));
+    DefineGlobalColor("Separator",  CreateColor(32, 32, 32));
+    DefineGlobalColor("Background", CreateColor(12, 12, 12));
+
+    # Absolute
+    plot AV = tickVolume;
+    AV.SetHiding(Display != Display.Absolute);
+    AV.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
+    AV.DefineColor("Normal", CreateColor(72, 72, 72));
+    AV.DefineColor("Abnormal", Color.GRAY);
+    AV.AssignValueColor(
+        if relVolume >= Deviations
+            then AV.Color("Abnormal")
+            else AV.Color("Normal")
+    );
+
+    # Relative
+    plot RV = relVolume;
+    RV.SetHiding(Display != Display.Relative);
+    RV.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
+    RV.DefineColor("AbnormalUp", Color.UPTICK);
+    RV.DefineColor("AbnormalDn", Color.DOWNTICK);
+    RV.DefineColor("Abnormal", Color.LIGHT_GRAY);
+    RV.DefineColor("Positive", Color.GRAY);
+    RV.DefineColor("Negative", CreateColor(72, 72, 72));
+    RV.AssignValueColor(
+        if relVolume >= Deviations and dataClose > dataClose[1]
+            then RV.Color("AbnormalUp")
+        else if relVolume >= Deviations and dataClose < dataClose[1]
+            then RV.Color("AbnormalDn")
+        else if relVolume >= Deviations
+            then RV.Color("Abnormal")
+        else if relVolume > 0
+            then RV.Color("Positive")
+            else RV.Color("Negative")
+    );
+
+    # Lines
+    plot D = Deviations;
+    D.SetHiding(Display != Display.Relative);
+    D.SetDefaultColor(GlobalColor("Line"));
+    D.HideBubble();
+    D.HideTitle();
+
+    plot N = 0;
+    N.SetDefaultColor(GlobalColor("Line"));
+    N.HideBubble();
+    N.HideTitle();
+    N.Hide();
+###

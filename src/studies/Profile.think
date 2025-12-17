@@ -1,0 +1,149 @@
+declare upper;
+
+#include_once "../lib/Chart.think"
+#include_once "../lib/Periods.think"
+#include_once "../lib/LatestPeriod.think"
+
+
+### INPUTS ###
+    input Type = {
+        default "Volume",
+        "Time"
+    };
+
+    input RowHeight = {
+        default "Tick Size",
+        "Automatic",
+        "Custom"
+    };
+
+    input CustomHeight = 1.0;
+    input Expansion    = yes;
+    input ExtendLines  = no;
+    input CustomVA     = 70;
+
+    input Period = {
+        default "Chart",
+        "Daily",
+        "Weekly",
+        "Monthly",
+        "MonthlyOPEX",
+        "Quarterly",
+        "QuarterlyOPEX",
+        "Earnings",
+        "Yearly",
+        "CandlesAgo",
+        "SinceDate"
+    };
+
+    @Date input SinceDate = 20250407;
+    input CandlesAgo      = 100;
+    input Separators      = no;
+###
+
+
+### CALCULATIONS ###
+    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
+    def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
+    def isLatestPeriod = LatestPeriod(Period, SinceDate, CandlesAgo);
+
+    def height;
+    switch (RowHeight) {
+        case "Automatic":
+            height = PricePerRow.AUTOMATIC;
+        case "Tick Size":
+            height = PricePerRow.TICKSIZE;
+        case "Custom":
+            height = CustomHeight;
+    }
+
+    def isSingleProfile = Expansion
+        or Period == Period.SinceDate
+        or Period == Period.CandlesAgo;
+
+    profile P = if Type == Type.Volume
+        then VolumeProfile(
+            startNewProfile      = isNewPeriod and (isLatestPeriod or !Expansion),
+            numberOfProfiles     = if isSingleProfile then 1 else 1000,
+            onExpansion          = Expansion,
+            "value area percent" = CustomVA,
+            pricePerRow          = height
+        )
+        else TimeProfile(
+            startNewProfile      = isNewPeriod and (isLatestPeriod or !Expansion),
+            numberOfProfiles     = if isSingleProfile then 1 else 1000,
+            onExpansion          = Expansion,
+            "value area percent" = CustomVA,
+            pricePerRow          = height
+        )
+    ;
+
+    def valuePOC = if !IsNaN(P.GetPointOfControl())
+        then P.GetPointOfControl()
+        else valuePOC[1];
+
+    def valueVAH = if !IsNaN(P.GetHighestValueArea())
+        then P.GetHighestValueArea()
+        else valueVAH[1];
+
+    def valueVAL = if !IsNaN(P.GetLowestValueArea())
+        then P.GetLowestValueArea()
+        else valueVAL[1];
+
+    def valueH = if !IsNaN(P.getHighest())
+        then P.getHighest()
+        else valueH[1];
+
+    def valueL = if !IsNaN(P.getLowest())
+        then P.getLowest()
+        else valueL[1];
+
+    def shouldPlot;
+    if Expansion {
+        shouldPlot = isLatestPeriod and ExtendLines or BarNumber() > Chart().endBar;
+    }
+    else {
+        shouldPlot = isActivePeriod and (ExtendLines or Chart().isValidBar);
+    }
+###
+
+
+### PLOTS ###
+    DefineGlobalColor("Profile",   CreateColor(48, 48, 48));
+    DefineGlobalColor("Separator", CreateColor(32, 32, 32));
+
+    P.Show(color = GlobalColor("Profile"));
+
+    plot POC = if shouldPlot then valuePOC else Double.NaN;
+    POC.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
+    POC.DefineColor("Value", CreateColor(128, 128, 128));
+    POC.SetDefaultColor(POC.Color("Value"));
+
+    plot VAH = if shouldPlot then valueVAH else Double.NaN;
+    VAH.SetPaintingStrategy(PaintingStrategy.DASHES);
+    VAH.DefineColor("Value", CreateColor(80, 80, 80));
+    VAH.SetDefaultColor(VAH.Color("Value"));
+
+    plot VAL = if shouldPlot then valueVAL else Double.NaN;
+    VAL.SetPaintingStrategy(PaintingStrategy.DASHES);
+    VAL.DefineColor("Value", CreateColor(80, 80, 80));
+    VAL.SetDefaultColor(VAL.Color("Value"));
+
+    plot HI = if shouldPlot then valueH else Double.NaN;
+    HI.SetPaintingStrategy(PaintingStrategy.DASHES);
+    HI.DefineColor("Value", CreateColor(48, 48, 48));
+    HI.SetDefaultColor(HI.Color("Value"));
+
+    plot LO = if shouldPlot then valueL else Double.NaN;
+    LO.SetPaintingStrategy(PaintingStrategy.DASHES);
+    LO.DefineColor("Value", CreateColor(48, 48, 48));
+    LO.SetDefaultColor(LO.Color("Value"));
+
+    # Separators
+    AddVerticalLine(
+        visible = Separators and isNewPeriod and (isLatestPeriod or !isSingleProfile),
+        color   = GlobalColor("Separator"),
+        stroke  = Curve.SHORT_DASH,
+        text    = ""
+    );
+###

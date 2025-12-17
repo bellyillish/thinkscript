@@ -1,0 +1,22 @@
+#include_once "../lib/Date.think"
+
+script Chart {
+    input Validator = "$DJI";
+
+    def aggregation   = GetAggregationPeriod();
+    def isIntraday    = aggregation <  AggregationPeriod.DAY;
+    def isDaily       = aggregation == AggregationPeriod.DAY;
+    def isMultiDay    = aggregation >  AggregationPeriod.DAY;
+    def isIntradayBar = isIntraday and Date() == Date()[1];
+    def number        = BarNumber();
+    def startBar      = First(number);
+    def endBar        = HighestAll(number * !IsNaN(close(Validator)));
+    def isValidBar    = number between startBar and endBar;
+    def startOffset   = number - startBar;
+    def endOffset     = number - endBar;
+    def isStart       = number == startBar;
+    def isEnd         = number == endBar;
+
+    plot P = Double.NaN;
+    P.hide();
+}

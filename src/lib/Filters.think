@@ -1,0 +1,24 @@
+script Filters {
+    input raw         = 0;
+    input oscillation = 0;
+    input smoothing   = 0;
+
+    def oscValue;
+    if oscillation > 1 {
+        oscValue = raw - Average(raw, oscillation);
+    }
+    else {
+        oscValue = raw;
+    }
+
+    def value;
+    if smoothing > 1 {
+        value = Inertia(oscValue, smoothing);
+    }
+    else {
+        value = oscValue;
+    }
+
+    plot P = value;
+    P.Hide();
+}

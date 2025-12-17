@@ -20,6 +20,7 @@ P.DefineColor("Up",      CreateColor(0, 197, 49));
 P.DefineColor("Down",    CreateColor(255, 95, 95));
 P.DefineColor("Neutral", GetColor(7));
 
+
 P.AssignValueColor(
     if P > 0 then P.Color("Up")
     else if P < 0 then P.Color("Down")

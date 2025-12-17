@@ -1,0 +1,183 @@
+declare lower;
+
+#include_once "../lib/Value.think"
+#include_once "../lib/Filters.think"
+#include_once "../lib/Periods.think"
+
+
+### INPUTS ###
+    input Quote = {
+        default "Close",
+        "Open",
+        "High",
+        "Low",
+        "HL2",
+        "HLC3",
+        "OHLC4"
+    };
+
+    input Display = {
+        default "Absolute",
+        "Percentage",
+        "Signal"
+    };
+
+    input Period = {
+        default "Chart",
+        "Daily",
+        "Weekly",
+        "Monthly",
+        "MonthlyOPEX",
+        "Quarterly",
+        "QuarterlyOPEX",
+        "Earnings",
+        "Yearly",
+        "CandlesAgo",
+        "SinceDate"
+    };
+
+    @Date input SinceDate = 20250407;
+    input CandlesAgo      = 100;
+    input Separators      = yes;
+    input Sanitize        = no;
+    input Oscillation     = 0;
+    input Smoothing       = 0;
+###
+
+
+### LOOKUPS ###
+    def type;
+    switch (Quote) {
+        case "Open"  : type = FundamentalType.OPEN;
+        case "High"  : type = FundamentalType.HIGH;
+        case "Low"   : type = FundamentalType.LOW;
+        case "HL2"   : type = FundamentalType.HL2;
+        case "HLC3"  : type = FundamentalType.HLC3;
+        case "OHLC4" : type = FundamentalType.OHLC4;
+        default      : type = FundamentalType.CLOSE;
+    }
+
+    def raw50  = Fundamental(type, "$SPXA50R");
+    def raw100 = Fundamental(type, "$SPXA100R");
+    def raw200 = Fundamental(type, "$SPXA200R");
+    def rawAll = close("$ADVSP") + close("$DECLSP") + close("$UNCHSP");
+
+    def data50;
+    def try100;
+    def data200;
+    def dataAll;
+    if Sanitize {
+        data50  = Value(raw50);
+        try100  = Value(raw100);
+        data200 = Value(raw200);
+        dataAll = Value(rawAll);
+    }
+    else {
+        data50  = raw50;
+        try100  = raw100;
+        data200 = raw200;
+        dataAll = rawAll;
+    }
+
+    def data100 = if IsNaN(try100)
+        then (data200 + data50) / 2
+        else try100;
+###
+
+
+### CALCULATIONS ###
+    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
+    def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
+
+    # Averages
+    def value50;
+    def value100;
+    def value200;
+    if Display == Display.Absolute {
+        value50  = data50  * dataAll;
+        value100 = data100 * dataAll;
+        value200 = data200 * dataAll;
+    }
+    else {
+        value50  = data50;
+        value100 = data100;
+        value200 = data200;
+    }
+
+    def signal = Min(data200, data100) - data50;
+
+    # Neutral
+    def neutral;
+    switch (Display) {
+        case "Absolute"   : neutral = dataAll / 2;
+        case "Percentage" : neutral = 0.5;
+        default           : neutral = 0;
+    }
+###
+
+
+### PLOTS ###
+    DefineGlobalColor("Line",       CreateColor(48, 48, 48));
+    DefineGlobalColor("Separator",  CreateColor(32, 32, 32));
+    DefineGlobalColor("Background", CreateColor(12, 12, 12));
+
+    # 50
+    plot V50 = Filters(value50, 0, Smoothing);
+    V50.SetHiding(Display == Display.Signal);
+    V50.DefineColor("Value", Color.UPTICK);
+    V50.AssignValueColor(
+        if Separators and isNewPeriod and isActivePeriod[1]
+            then GlobalColor("Background")
+            else V50.Color("Value")
+    );
+
+    # 100
+    plot V100 = Filters(value100, 0, Smoothing);
+    V100.SetHiding(Display == Display.Signal);
+    V100.DefineColor("Value", Color.ORANGE);
+    V100.AssignValueColor(
+        if Separators and isNewPeriod and isActivePeriod[1]
+            then GlobalColor("Background")
+            else V100.Color("Value")
+    );
+
+    # 200
+    plot V200 = Filters(value200, 0, Smoothing);
+    V200.SetHiding(Display == Display.Signal);
+    V200.DefineColor("Value", Color.DOWNTICK);
+    V200.AssignValueColor(
+        if Separators and isNewPeriod and isActivePeriod[1]
+            then GlobalColor("Background")
+            else V200.Color("Value")
+    );
+
+    # Signal
+    plot S = Filters(signal, Oscillation, Smoothing);
+    S.SetHiding(Display != Display.Signal);
+    S.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
+    S.DefineColor("Up", Color.UPTICK);
+    S.DefineColor("Down", Color.DOWNTICK);
+    S.DefineColor("Neutral", Color.DARK_GRAY);
+    S.SetDefaultColor(S.Color("Neutral"));
+    S.AssignValueColor(
+        if S > neutral
+            then S.Color("Up")
+        else if S < neutral
+            then S.Color("Down")
+            else S.Color("Neutral")
+    );
+
+    # Line
+    plot N = neutral;
+    N.SetDefaultColor(GlobalColor("Line"));
+    N.HideBubble();
+    N.HideTitle();
+
+    # Separators
+    AddVerticalLine(
+        visible = Separators and isNewPeriod and isActivePeriod[1],
+        color   = GlobalColor("Separator"),
+        stroke  = Curve.SHORT_DASH,
+        text    = ""
+    );
+###

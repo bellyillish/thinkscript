@@ -1,0 +1,40 @@
+declare upper;
+
+#include_once "../lib/Periods.think"
+
+
+### INPUTS ###
+    input Period = {
+        "Daily",
+        "Weekly",
+        default "Monthly",
+        "MonthlyOPEX",
+        "Quarterly",
+        "QuarterlyOPEX",
+        "Earnings",
+        "Yearly",
+        "CandlesAgo",
+        "SinceDate"
+    };
+
+    @Date input SinceDate = 20250407;
+    input CandlesAgo      = 100;
+###
+
+
+### CALCULATIONS ###
+    def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
+    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
+###
+
+
+### PLOTS ###
+    DefineGlobalColor("Separator", CreateColor(32, 32, 32));
+
+    AddVerticalLine(
+        visible = isNewPeriod and isActivePeriod[1],
+        color   = GlobalColor("Separator"),
+        stroke  = Curve.SHORT_DASH,
+        text    = ""
+    );
+###

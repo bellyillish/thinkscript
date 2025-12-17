@@ -1,0 +1,50 @@
+#include_once "../lib/Date.think"
+#include_once "../lib/Chart.think"
+
+script LatestPeriod {
+    input Period  = "Chart";
+    input Since   = 20250407;
+    input Candles = 100;
+
+    def endBar    = Chart().endBar;
+    def endOffset = Chart().endOffset;
+    def date      = GetYYYYMMDD();
+
+    def isLatest;
+    if Period == "Daily" {
+        isLatest = date == GetValue(date, endOffset);
+    }
+    else if Period == "Weekly" {
+        isLatest = Date().yyyyww == GetValue(Date().yyyyww, endOffset);
+    }
+    else if Period == "Monthly" {
+        isLatest = Date().yyyymm == GetValue(Date().yyyymm, endOffset);
+    }
+    else if Period == "MonthlyOPEX" {
+        isLatest = Date().yyyymm == GetValue(Date().yyyymm, endOffset);
+    }
+    else if Period == "Quarterly" {
+        isLatest = Date().yyyyq == GetValue(Date().yyyyq, endOffset);
+    }
+    else if Period == "QuarterlyOPEX" {
+        isLatest = Date().yyyyqOpex == GetValue(Date().yyyyqOpex, endOffset);
+    }
+    else if period == "Earnings" {
+        isLatest = Date().lastEarnings == GetValue(Date().lastEarnings, endOffset);
+    }
+    else if Period == "Yearly" {
+        isLatest = Date().yyyy == GetValue(Date().yyyy, endOffset);
+    }
+    else if Period == "SinceDate" {
+        isLatest = date >= Since;
+    }
+    else if Period == "CandlesAgo" {
+        isLatest = BarNumber() >= endBar - Candles;
+    }
+    else {
+        isLatest = yes;
+    }
+
+    plot P = isLatest;
+    P.hide();
+}

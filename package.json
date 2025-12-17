@@ -1,0 +1,20 @@
+{
+  "name": "thinkscript",
+  "description": "thinkscript indicators and studies",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bellyillish/thinkscript.git"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "node build.js",
+    "start": "nodemon"
+  },
+  "dependencies": {
+    "fs-extra": "^11.3.2",
+    "nodemon": "^3.1.11"
+  }
+}
