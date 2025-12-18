@@ -4,105 +4,26 @@ declare upper;
 #include_once "../lib/Chart.think"
 
 
-### SCRIPTS ####
+### SCRIPTS ###
     script ExpectedMove {
-        input StockPrice  = 0;
-        input ExpireDays  = 0;
-        input Volatility  = 0;
-        input denominator = 0;
+        input Price   = 0;
+        input Expires = 0;
+        input Vol     = 0;
+        input Days    = 365;
 
-        plot Move = StockPrice * Volatility * Sqrt(ExpireDays / denominator);
-        plot H    = StockPrice + Move;
-        plot L    = StockPrice - Move;
-    }
+        def inputPrice   = Price;
+        def inputExpires = Expires;
+        def inputVol     = Vol;
+        def inputDays    = Days;
 
-    script Opex {
-        input period  = 1;
+        def lastPrice   = GetValue(inputPrice,   Chart().endOffset);
+        def lastExpires = GetValue(inputExpires, Chart().endOffset);
+        def lastVol     = GetValue(inputVol,     Chart().endOffset);
+        def lastDays    = GetValue(inputDays,    Chart().endOffset);
 
-        def INTRADAY  = 0;
-        def DAILY     = 1;
-        def WEEKLY    = 2;
-        def MONTHLY   = 3;
-        def QUARTERLY = 4;
-
-        def MM;
-        def YYYY;
-        if period == QUARTERLY {
-            MM   = Date().qOpex * 3;
-            YYYY = Date().yyyyOpex;
-        }
-        else if period == MONTHLY {
-            MM   = Date().mmOpex;
-            YYYY = Date().yyyyOpex;
-        }
-        else {
-            MM   = GetMonth();
-            YYYY = GetYear();
-        }
-
-        def YYYYMM00 = YYYY * 10000 + MM * 100;
-
-        def firstOfMonth = fold i1 = 1 to 6 with d1 = 0 do
-            if d1 > 0
-                then d1
-            else if CountTradingDays(YYYYMM00 + i1, YYYYMM00 + i1)
-                then i1
-                else 0;
-
-        def firstDOW = GetDayOfWeek(YYYYMM00 + firstOfMonth);
-        def firstFri = firstOfMonth + 5 - firstDOW;
-
-        def thirdFri = fold i2 = 0 to 4 with d2 = 0 do
-            if d2 > 0
-                then d2
-            else if CountTradingDays(YYYYMM00 + firstFri + 14 - i2, YYYYMM00 + firstFri + 14 - i2)
-                then firstFri + 14 - i2
-                else 0;
-
-        def thisDOW = GetDayOfWeek(GetYYYYMMDD());
-        def thisFri = 5 - (if thisDOW > 5 then thisDOW - 8 else thisDOW) + 1;
-
-        plot Expiration;
-        if period == QUARTERLY {
-            Expiration = YYYYMM00 + thirdFri;
-        }
-        else if period == MONTHLY {
-            Expiration = YYYYMM00 + thirdFri;
-        }
-        else if period == WEEKLY {
-            Expiration = GetValue(GetYYYYMMDD(), 1 - thisFri);
-        }
-        else {
-            Expiration = GetYYYYMMDD();
-        }
-
-        def rthStart = RegularTradingStart(GetYYYYMMDD());
-        def rthEnd   = RegularTradingEnd(GetYYYYMMDD());
-        def time     = GetTime();
-
-        plot TradeDays;
-        plot CalDays;
-        if period == INTRADAY {
-            TradeDays = (rthEnd - time) / (rthEnd / rthStart);
-            CalDays   = TradeDays;
-        }
-        else {
-            TradeDays = CountTradingDays(GetYYYYMMDD(), Expiration);
-            CalDays   = DaysTillDate(Expiration) + 1;
-        }
-
-        plot Series;
-        if period == QUARTERLY {
-            Series = if Date().isEndOfQuarter and Date().isAfterOpex
-                then 3
-                else 3 - (getMonth() - 1) % 3 - Date().isAfterOpex;
-        }
-        else if period == WEEKLY {
-            Series = thisFri;
-        }
-        else {
-            Series = 1;
-        }
+        plot Move = lastPrice * lastVol * Sqrt(lastExpires / lastDays);
+        plot H    = lastPrice + Move;
+        plot L    = lastPrice - Move;
     }
 ###
 
@@ -111,224 +32,222 @@ declare upper;
     input Period = {
         "Intraday",
         "Daily",
-        default "Weekly",
-        "Monthly",
+        "Weekly",
+        default "Monthly",
         "Quarterly"
     };
 
-    input Calculation = {
-        default "Calendar Days",
-        "Trading Days"
-    };
-
-    input HistoricalLength = 20;
-    input ShowLabels       = yes;
-    input Separator        = yes;
+    input ShowOptions      = yes;
+    input ShowImplied      = no;
+    input ShowHistorical   = no;
+    input HistoricalPeriod = 20;
+    input Labels           = yes;
+    input LabelSize        = FontSize.SMALL;
+    input Extend           = no;
+    input Separators       = no;
 ###
 
 
-### CALCULATIONS ###
-    def isNewPeriod;
-    def isLatestPeriod;
+### CALCULATIONS ####
+    def hasOptions  = !IsNaN(SeriesVolatility(series = 1, expirationType = ExpirationType.REGULAR));
+    def hasWeeklies = !IsNaN(SeriesVolatility(series = 6, expirationType = ExpirationType.WEEKLYS));
+    def endOffset   = Chart().endOffset;
+
+    def isLastPeriod;
     switch (Period) {
-        case "Intraday":
-            isNewPeriod    = Date() != Date()[1];
-            isLatestPeriod = Date() == GetValue(Date(), Chart().endOffset);
-        case "Daily":
-            isNewPeriod    = Date() != Date()[1];
-            isLatestPeriod = Date() == GetValue(Date(), Chart().endOffset);
-        case "Weekly":
-            isNewPeriod    = Date().yyyyww != Date().yyyyww[1];
-            isLatestPeriod = Date().yyyyww == GetValue(Date().yyyyww, Chart().endOffset);
-        case "Monthly":
-            isNewPeriod    = Date().yyyymmOpex != Date().yyyymmOpex[1];
-            isLatestPeriod = Date().yyyymmOpex == GetValue(Date().yyyymmOpex, Chart().endOffset);
         case "Quarterly":
-            isNewPeriod    = Date().yyyyqOpex != Date().yyyyqOpex[1];
-            isLatestPeriod = Date().yyyyqOpex == GetValue(Date().yyyyqOpex, Chart().endOffset);
+            isLastPeriod = Date().yyyyqOpex == GetValue(Date().yyyyqOpex, endOffset);
+        case "Monthly":
+            isLastPeriod = Date().yyyymmOpex == GetValue(Date().yyyymmOpex, endOffset);
+        case "Weekly":
+            isLastPeriod = Date().yyyyww == GetValue(Date().yyyyww, endOffset);
+        default:
+            isLastPeriod = Date() == GetValue(Date(), endOffset);
     }
 
-    def expDays;
-    def monthlyExpDays;
-    def denominator;
-    switch (Calculation) {
-        case "Trading Days":
-            expDays        = Opex(Period).TradeDays;
-            monthlyExpDays = Opex(Period.Monthly).TradeDays;
-            denominator    = 253;
-        case "Calendar Days":
-            expDays        = Opex(Period).CalDays;
-            monthlyExpDays = Opex(Period.Monthly).CalDays;
-            denominator    = 365;
-    }
-
-    def ovRaw;
+    def series;
     switch (Period) {
-        case "Intraday":
-            ovRaw = SeriesVolatility(series = 1);
-        case "Daily":
-            ovRaw = SeriesVolatility(series = 2);
-        case "Weekly":
-            if Opex(Period).Series == 1 {
-                ovRaw = SeriesVolatility(series = 2);
-            }
-            else if Opex(Period).Series == 2 {
-                ovRaw = SeriesVolatility(series = 3);
-            }
-            else if Opex(Period).Series == 3 {
-                ovRaw = SeriesVolatility(series = 4);
-            }
-            else if Opex(Period).Series == 4 {
-                ovRaw = SeriesVolatility(series = 5);
-            }
-            else if Opex(Period).Series == 5 {
-                ovRaw = SeriesVolatility(series = 6);
-            }
-            else {
-                ovRaw = Double.NaN;
-            }
-        case "Monthly":
-            ovRaw = SeriesVolatility(series = 1, expirationType = ExpirationType.REGULAR);
         case "Quarterly":
-            if Opex(Period).Series == 1 {
-                ovRaw = SeriesVolatility(series = 1, expirationType = ExpirationType.REGULAR);
-            }
-            else if Opex(Period).Series == 2 {
-                ovRaw = SeriesVolatility(series = 2, expirationType = ExpirationType.REGULAR);
-            }
-            else if Opex(Period).Series == 3 {
-                ovRaw = SeriesVolatility(series = 3, expirationType = ExpirationType.REGULAR);
-            }
-            else {
-                ovRaw = Double.NaN;
-            }
+            series = (1 - Date().mmOpex) % 3 + 6;
+        case "Monthly":
+            series = 2;
+        case "Weekly":
+            series = 7 - Date().dow - Date().isOpexWeek;
+        case "Daily":
+            series = 2;
+        case "Intraday":
+            series = 1;
     }
 
-    def end = Chart().endOffset;
+    def calDays;
+    def tradeDays;
+    switch (Period) {
+        case "Quarterly":
+            calDays   = Next3rdFriday(series - Date().isOpexDay);
+            tradeDays = Ceil(calDays * 253 / 365);
+        case "Monthly":
+            calDays   = Next3rdFriday(series - Date().isOpexDay);
+            tradeDays = Ceil(calDays * 253 / 365);
+        case "Weekly":
+            calDays   = 8 - Date().dow;
+            tradeDays = calDays - 2;
+        case "Daily":
+            calDays   = 1;
+            tradeDays = calDays;
+        case "Intraday":
+            calDays   = (RegularTradingEnd(GetYYYYMMDD()) - GetTime()) / (24 * 60 * 60000);
+            tradeDays = (RegularTradingEnd(GetYYYYMMDD()) - GetTime()) / (RegularTradingEnd(GetYYYYMMDD()) - RegularTradingStart(GetYYYYMMDD()));
+    }
 
-    def startPrice;
     def ov;
-    def iv;
-    def hv;
-    def oh;
+    switch (Period) {
+        case "Quarterly":
+            if series == 6 {
+                ov = SeriesVolatility(series = 6, expirationType = ExpirationType.REGULAR);
+            }
+            else if series == 5 {
+                ov = SeriesVolatility(series = 5, expirationType = ExpirationType.REGULAR);
+            }
+            else if series == 4 {
+                ov = SeriesVolatility(series = 4, expirationType = ExpirationType.REGULAR);
+            }
+            else {
+                ov = Double.NaN;
+            }
+        case "Monthly":
+            ov = SeriesVolatility(series = 2, expirationType = ExpirationType.REGULAR);
+        case "Weekly":
+            if series == 6 {
+                ov = SeriesVolatility(series = 6, expirationType = ExpirationType.WEEKLYS);
+            }
+            else if series == 5 {
+                ov = SeriesVolatility(series = 5, expirationType = ExpirationType.WEEKLYS);
+            }
+            else if series == 4 {
+                ov = SeriesVolatility(series = 4, expirationType = ExpirationType.WEEKLYS);
+            }
+            else if series == 3 {
+                ov = SeriesVolatility(series = 3, expirationType = ExpirationType.WEEKLYS);
+            }
+            else if series == 2 {
+                ov = SeriesVolatility(series = 2, expirationType = ExpirationType.WEEKLYS);
+            }
+            else if series == 1 {
+                ov = SeriesVolatility(series = 1, expirationType = ExpirationType.WEEKLYS);
+            }
+            else {
+                ov = Double.NaN;
+            }
+        case "Daily":
+            ov = SeriesVolatility(series = 2, expirationType = ExpirationType.WEEKLYS);
+        case "Intraday":
+            ov = SeriesVolatility(series = 1, expirationType = ExpirationType.WEEKLYS);
+    }
+
+    def iv = imp_volatility;
+    def hv = HistoricalVolatility(HistoricalPeriod);
+
+    def hasMove = (isLastPeriod or Extend)
+        and (Period != Period.Intraday or GetAggregationPeriod() < AggregationPeriod.DAY)
+        and (hasWeeklies or Period == Period.Monthly or Period == Period.Quarterly);
+
     def ol;
-    def ih;
+    def oh;
     def il;
-    def hh;
+    def ih;
     def hl;
-    if isLatestPeriod and isNewPeriod {
-        startPrice = if Period == Period.Intraday then open else close[1];
-
-        ov = GetValue(ovRaw, end);
-        iv = GetValue(imp_volatility, end);
-        hv = GetValue(HistoricalVolatility(HistoricalLength), end);
-
-        oh = ExpectedMove(startPrice, expDays, ov, denominator).H;
-        ol = ExpectedMove(startPrice, expDays, ov, denominator).L;
-        ih = ExpectedMove(startPrice, expDays, iv, denominator).H;
-        il = ExpectedMove(startPrice, expDays, iv, denominator).L;
-        hh = ExpectedMove(startPrice, expDays, hv, denominator).H;
-        hl = ExpectedMove(startPrice, expDays, hv, denominator).L;
+    def hh;
+    if hasMove {
+        ol = ExpectedMove(close, calDays,   ov, 365).L;
+        oh = ExpectedMove(close, calDays,   ov, 365).H;
+        il = ExpectedMove(close, calDays,   iv, 365).L;
+        ih = ExpectedMove(close, calDays,   iv, 365).H;
+        hl = ExpectedMove(close, tradeDays, hv, 253).L;
+        hh = ExpectedMove(close, tradeDays, hv, 253).H;
     }
     else {
-        startPrice = startPrice[1];
-        ov = ov[1];
-        iv = iv[1];
-        hv = hv[1];
-        oh = oh[1];
-        ol = ol[1];
-        ih = ih[1];
-        il = il[1];
-        hh = hh[1];
-        hl = hl[1];
-    }
-
-    def hideOnTimeframe;
-    switch (Period) {
-        case "Intraday":
-            hideOnTimeFrame = Chart().aggregation > AggregationPeriod.DAY;
-        case "Daily":
-            hideOnTimeFrame = Chart().aggregation > AggregationPeriod.DAY;
-        case "Weekly":
-            hideOnTimeFrame = Chart().aggregation > AggregationPeriod.WEEK;
-        case "Monthly":
-            hideOnTimeFrame = Chart().aggregation > AggregationPeriod.MONTH;
-        case "Quarterly":
-            hideOnTimeFrame = Chart().aggregation > AggregationPeriod.QUARTER;
+        ol = Double.NaN;
+        oh = Double.NaN;
+        il = Double.NaN;
+        ih = Double.NaN;
+        hl = Double.NaN;
+        hh = Double.NaN;
     }
 ###
 
 
 ### PLOTS ###
     DefineGlobalColor("Line",      CreateColor(48, 48, 48));
-    DefineGlobalColor("Separator", CreateColor(32, 32, 32));
+    DefineGlobalColor("Separators", CreateColor(32, 32, 32));
 
-    plot OptH = if isLatestPeriod and oh > 0 then oh else Double.NaN;
-    OptH.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
-    OptH.DefineColor("Bar", Color.LIGHT_GRAY);
-    OptH.SetDefaultColor(OptH.Color("Bar"));
-    OptH.SetHiding(hideOnTimeFrame);
-
-    plot OptL = if isLatestPeriod and ol > 0 then ol else Double.NaN;
+    plot OptL = ol;
     OptL.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
-    OptL.SetDefaultColor(OptH.Color("Bar"));
-    OptL.SetHiding(hideOnTimeFrame);
+    OptL.DefineColor("Bar", CreateColor(77, 166, 255));
+    OptL.SetDefaultColor(OptL.Color("Bar"));
+    OptL.SetHiding(!ShowOptions);
 
-    plot ImpH = if isLatestPeriod and ih > 0 then ih else Double.NaN;
-    ImpH.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
-    ImpH.DefineColor("Bar", CreateColor(77, 166, 255));
-    ImpH.SetDefaultColor(ImpH.Color("Bar"));
-    ImpH.SetHiding(hideOnTimeFrame);
+    plot OptH = oh;
+    OptH.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
+    OptH.SetDefaultColor(OptL.Color("Bar"));
+    OptH.SetHiding(!ShowOptions);
 
-    plot ImpL = if isLatestPeriod and il > 0 then il else Double.NaN;
+    plot ImpL = il;
     ImpL.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
-    ImpL.SetDefaultColor(ImpH.Color("Bar"));
-    ImpL.SetHiding(hideOnTimeFrame);
+    ImpL.DefineColor("Bar", CreateColor(255, 159, 67));
+    ImpL.SetDefaultColor(ImpL.Color("Bar"));
+    ImpL.SetHiding(!ShowImplied);
 
-    plot HistH = if isLatestPeriod and hh > 0 then hh else Double.NaN;
-    HistH.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
-    HistH.DefineColor("Bar", CreateColor(217, 122, 74));
-    HistH.SetDefaultColor(HistH.Color("Bar"));
-    HistH.SetHiding(hideOnTimeFrame);
+    plot ImpH = ih;
+    ImpH.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
+    ImpH.SetDefaultColor(ImpL.Color("Bar"));
+    ImpH.SetHiding(!ShowImplied);
 
-    plot HistL = if isLatestPeriod and hl > 0 then hl else Double.NaN;
+    plot HistL = hl;
     HistL.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
-    HistL.SetDefaultColor(HistH.Color("Bar"));
-    HistL.SetHiding(hideOnTimeFrame);
+    HistL.DefineColor("Bar", CreateColor(180, 180, 180));
+    HistL.SetDefaultColor(HistL.Color("Bar"));
+    HistL.SetHiding(!ShowHistorical);
+
+    plot HistH = hh;
+    HistH.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
+    HistH.SetDefaultColor(HistL.Color("Bar"));
+    HistH.SetHiding(!ShowHistorical);
 
     # Lines
-    plot Mid = if isLatestPeriod then startPrice else Double.NaN;
+    plot Mid = if isLastPeriod or Extend then GetValue(close, endOffset) else Double.NaN;
     Mid.SetPaintingStrategy(PaintingStrategy.DASHES);
     Mid.SetDefaultColor(GlobalColor("Line"));
-    Mid.SetHiding(hideOnTimeFrame);
     Mid.HideBubble();
     Mid.HideTitle();
 
     # Dividers
     AddVerticalLine(
-        visible = Separator and isNewPeriod and isLatestPeriod,
-        color   = GlobalColor("Separator"),
+        visible = Separators and isLastPeriod != isLastPeriod[1],
+        color   = GlobalColor("Separators"),
         stroke  = Curve.SHORT_DASH,
         text    = ""
     );
 
     # Labels
     AddLabel(
-        visible  = ShowLabels,
-        color    = HistH.Color("Bar"),
-        text     = "HV: " + hv,
+        visible  = Labels and ShowHistorical,
+        size     = LabelSize,
+        color    = HistL.Color("Bar"),
+        text     = " HV: " + AsPercent(hv) + " ",
         location = Location.TOP_RIGHT
     );
     AddLabel(
-        visible  = ShowLabels,
-        color    = ImpH.Color("Bar"),
-        text     = "IV: " + iv,
+        visible  = Labels and ShowImplied,
+        size     = LabelSize,
+        color    = ImpL.Color("Bar"),
+        text     = " IV: " + AsPercent(iv) + " ",
         location = Location.TOP_RIGHT
     );
     AddLabel(
-        visible  = ShowLabels,
-        color    = OptH.Color("Bar"),
-        text     = "OV: " + ov,
+        visible  = Labels and ShowOptions,
+        size     = LabelSize,
+        color    = OptL.Color("Bar"),
+        text     = " OV: " + AsPercent(ov) + " ",
         location = Location.TOP_RIGHT
     );
 ###
