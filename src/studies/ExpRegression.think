@@ -54,72 +54,70 @@ declare upper;
 
 
 ### CALCULATIONS ###
-    def mean = Exp(
-        InertiaAll(
-            data          = Log(data),
-            startDate     = SinceDate,
-            extendToLeft  = ExtendLeft,
-            extendToRight = ExtendRight
-        )
+    def linReg = InertiaAll(
+        data          = Log(data),
+        startDate     = SinceDate,
+        extendToLeft  = ExtendLeft,
+        extendToRight = ExtendRight
     );
 
-    def dev = Exp(
-        StDevAll(
-            data          = Log(data / mean),
-            StartDate     = SinceDate,
-            extendToLeft  = ExtendLeft,
-            extendToRight = ExtendRight
-        )
+    def expReg = Exp(linReg);
+
+    def dev = StDevAll(
+        data          = Log(close) - linReg,
+        StartDate     = SinceDate,
+        extendToLeft  = ExtendLeft,
+        extendToRight = ExtendRight
     );
 ###
 
 
 ### PLOTS ###
-  plot Regression = mean;
-  Regression.DefineColor("Value", Color.GRAY);
+  plot Regression = expReg;
+  Regression.DefineColor("Value", CreateColor(180, 180, 180));
   Regression.SetDefaultColor(Regression.Color("Value"));
 
   ### 1 stdev
-  plot Up1 = mean * dev;
+  plot Up1 = expReg * Exp(1 * dev);
   Up1.SetHiding(Deviations < 1);
-  Up1.DefineColor("Value", Color.DARK_GRAY);
+  Up1.DefineColor("Value", CreateColor(48, 48, 48));
   Up1.SetDefaultColor(Up1.Color("Value"));
 
-  plot Down1 = mean / dev;
+  plot Down1 = expReg / Exp(1 * dev);
   Down1.SetHiding(Deviations < 1);
-  Down1.DefineColor("Value", Color.DARK_GRAY);
+  Down1.DefineColor("Value", CreateColor(48, 48, 48));
   Down1.SetDefaultColor(Down1.Color("Value"));
 
   ### 2 stdevs
-  plot Up2 = mean * Power(dev, 2);
+  plot Up2 = expReg * Exp(2 * dev);
   Up2.SetHiding(Deviations < 2);
-  Up2.DefineColor("Value", Color.DARK_GRAY);
+  Up2.DefineColor("Value", CreateColor(48, 48, 48));
   Up2.SetDefaultColor(Up2.Color("Value"));
 
-  plot Down2 = mean / Power(dev, 2);
+  plot Down2 = expReg / Exp(2 * dev);
   Down2.SetHiding(Deviations < 2);
-  Down2.DefineColor("Value", Color.DARK_GRAY);
+  Down2.DefineColor("Value", CreateColor(48, 48, 48));
   Down2.SetDefaultColor(Down2.Color("Value"));
 
   ### 3 stdevs
-  plot Up3 = mean * Power(dev, 3);
+  plot Up3 = expReg * Exp(3 * dev);
   Up3.SetHiding(Deviations < 3);
-  Up3.DefineColor("Value", Color.DARK_GRAY);
+  Up3.DefineColor("Value", CreateColor(48, 48, 48));
   Up3.SetDefaultColor(Up3.Color("Value"));
 
-  plot Down3 = mean / Power(dev, 3);
+  plot Down3 = expReg / Exp(3 * dev);
   Down3.SetHiding(Deviations < 3);
-  Down3.DefineColor("Value", Color.DARK_GRAY);
+  Down3.DefineColor("Value", CreateColor(48, 48, 48));
   Down3.SetDefaultColor(Down3.Color("Value"));
 
   ### 4 stdevs
-  plot Up4 = mean * Power(dev, 4);
+  plot Up4 = expReg * Exp(4 * dev);
   Up4.SetHiding(Deviations < 4);
-  Up4.DefineColor("Value", Color.DARK_GRAY);
+  Up4.DefineColor("Value", CreateColor(48, 48, 48));
   Up4.SetDefaultColor(Up4.Color("Value"));
 
-  plot Down4 = mean / Power(dev, 4);
+  plot Down4 = expReg / Exp(4 * dev);
   Down4.SetHiding(Deviations < 4);
-  Down4.DefineColor("Value", Color.DARK_GRAY);
+  Down4.DefineColor("Value", CreateColor(48, 48, 48));
   Down4.SetDefaultColor(Down4.Color("Value"));
 ###
