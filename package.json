@@ -11,7 +11,7 @@
   "main": "index.js",
   "scripts": {
     "build": "node build.js",
-    "start": "nodemon"
+    "watch": "nodemon"
   },
   "dependencies": {
     "fs-extra": "^11.3.2",
