@@ -1,5 +1,6 @@
 @colors/
 @docs/
+@snippets/
 node_modules/
 dist/
 package-lock.json
