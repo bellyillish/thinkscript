@@ -2,8 +2,6 @@ declare lower;
 
 #include_once "../lib/Chart.think"
 #include_once "../lib/Periods.think"
-#include_once "../lib/LatestPeriod.think"
-
 
 ### INPUTS ###
     input Cap = {
@@ -55,7 +53,6 @@ declare lower;
     input EndPeriodOnly   = yes;
 ###
 
-
 ### LOOKUPS ###
     def type;
     switch (Quote) {
@@ -82,11 +79,10 @@ declare lower;
     def value60 = Log(Fundamental(type, "$SP" + Cap + "#60"));
 ###
 
-
 ### CALCULATIONS ###
     def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
-    def isLatestPeriod = LatestPeriod(Period, SinceDate, CandlesAgo);
-    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
+    def isLatestPeriod = Periods(Period, SinceDate, CandlesAgo).isLatest;
+    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNewAndValid;
     def showBubbles    = isActivePeriod and isNewPeriod[-1] or Chart().isEnd;
     def isStartBar     = Chart().isStart;
     def endOffset      = Chart().endOffset;
@@ -120,49 +116,48 @@ declare lower;
         change60 = Double.NaN;
     }
     else if isNewPeriod {
-        offset00 = if Display == Display.Ratio then value00 - value00[1] else 0;
-        change00 = value00 - value00[1] - offset00;
-        change10 = value10 - value10[1] - offset00;
-        change15 = value15 - value15[1] - offset00;
-        change20 = value20 - value20[1] - offset00;
-        change25 = value25 - value25[1] - offset00;
-        change30 = value30 - value30[1] - offset00;
-        change35 = value35 - value35[1] - offset00;
-        change40 = value40 - value40[1] - offset00;
-        change45 = value45 - value45[1] - offset00;
-        change50 = value50 - value50[1] - offset00;
-        change55 = value55 - value55[1] - offset00;
-        change60 = value60 - value60[1] - offset00;
+        offset00 = if Display == Display.Ratio then value00 - GetValue(value00, 1) else 0;
+        change00 = CompoundValue(1, value00 - value00[1] - offset00, 0);
+        change10 = CompoundValue(1, value10 - value10[1] - offset00, 0);
+        change15 = CompoundValue(1, value15 - value15[1] - offset00, 0);
+        change20 = CompoundValue(1, value20 - value20[1] - offset00, 0);
+        change25 = CompoundValue(1, value25 - value25[1] - offset00, 0);
+        change30 = CompoundValue(1, value30 - value30[1] - offset00, 0);
+        change35 = CompoundValue(1, value35 - value35[1] - offset00, 0);
+        change40 = CompoundValue(1, value40 - value40[1] - offset00, 0);
+        change45 = CompoundValue(1, value45 - value45[1] - offset00, 0);
+        change50 = CompoundValue(1, value50 - value50[1] - offset00, 0);
+        change55 = CompoundValue(1, value55 - value55[1] - offset00, 0);
+        change60 = CompoundValue(1, value60 - value60[1] - offset00, 0);
     }
     else {
-        offset00 = if Display == Display.Ratio then value00 - value00[1] else 0;
-        change00 = change00[1] + value00 - value00[1] - offset00;
-        change10 = change10[1] + value10 - value10[1] - offset00;
-        change15 = change15[1] + value15 - value15[1] - offset00;
-        change20 = change20[1] + value20 - value20[1] - offset00;
-        change25 = change25[1] + value25 - value25[1] - offset00;
-        change30 = change30[1] + value30 - value30[1] - offset00;
-        change35 = change35[1] + value35 - value35[1] - offset00;
-        change40 = change40[1] + value40 - value40[1] - offset00;
-        change45 = change45[1] + value45 - value45[1] - offset00;
-        change50 = change50[1] + value50 - value50[1] - offset00;
-        change55 = change55[1] + value55 - value55[1] - offset00;
-        change60 = change60[1] + value60 - value60[1] - offset00;
+        offset00 = if Display == Display.Ratio then value00 - GetValue(value00, 1) else 0;
+        change00 = CompoundValue(1, change00[1] + value00 - value00[1] - offset00, 0);
+        change10 = CompoundValue(1, change10[1] + value10 - value10[1] - offset00, 0);
+        change15 = CompoundValue(1, change15[1] + value15 - value15[1] - offset00, 0);
+        change20 = CompoundValue(1, change20[1] + value20 - value20[1] - offset00, 0);
+        change25 = CompoundValue(1, change25[1] + value25 - value25[1] - offset00, 0);
+        change30 = CompoundValue(1, change30[1] + value30 - value30[1] - offset00, 0);
+        change35 = CompoundValue(1, change35[1] + value35 - value35[1] - offset00, 0);
+        change40 = CompoundValue(1, change40[1] + value40 - value40[1] - offset00, 0);
+        change45 = CompoundValue(1, change45[1] + value45 - value45[1] - offset00, 0);
+        change50 = CompoundValue(1, change50[1] + value50 - value50[1] - offset00, 0);
+        change55 = CompoundValue(1, change55[1] + value55 - value55[1] - offset00, 0);
+        change60 = CompoundValue(1, change60[1] + value60 - value60[1] - offset00, 0);
     }
 
-    def hide10 = if isStartBar then Performance == Performance.Leading and GetValue(change10 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change10 > change00, endOffset) else hide10[1];
-    def hide15 = if isStartBar then Performance == Performance.Leading and GetValue(change15 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change15 > change00, endOffset) else hide15[1];
-    def hide20 = if isStartBar then Performance == Performance.Leading and GetValue(change20 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change20 > change00, endOffset) else hide20[1];
-    def hide25 = if isStartBar then Performance == Performance.Leading and GetValue(change25 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change25 > change00, endOffset) else hide25[1];
-    def hide30 = if isStartBar then Performance == Performance.Leading and GetValue(change30 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change30 > change00, endOffset) else hide30[1];
-    def hide35 = if isStartBar then Performance == Performance.Leading and GetValue(change35 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change35 > change00, endOffset) else hide35[1];
-    def hide40 = if isStartBar then Performance == Performance.Leading and GetValue(change40 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change40 > change00, endOffset) else hide40[1];
-    def hide45 = if isStartBar then Performance == Performance.Leading and GetValue(change45 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change45 > change00, endOffset) else hide45[1];
-    def hide50 = if isStartBar then Performance == Performance.Leading and GetValue(change50 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change50 > change00, endOffset) else hide50[1];
-    def hide55 = if isStartBar then Performance == Performance.Leading and GetValue(change55 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change55 > change00, endOffset) else hide55[1];
-    def hide60 = if isStartBar then Performance == Performance.Leading and GetValue(change60 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change60 > change00, endOffset) else hide60[1];
+    def hide10 = if isStartBar then Performance == Performance.Leading and GetValue(change10 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change10 > change00, endOffset) else GetValue(hide10, 1);
+    def hide15 = if isStartBar then Performance == Performance.Leading and GetValue(change15 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change15 > change00, endOffset) else GetValue(hide15, 1);
+    def hide20 = if isStartBar then Performance == Performance.Leading and GetValue(change20 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change20 > change00, endOffset) else GetValue(hide20, 1);
+    def hide25 = if isStartBar then Performance == Performance.Leading and GetValue(change25 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change25 > change00, endOffset) else GetValue(hide25, 1);
+    def hide30 = if isStartBar then Performance == Performance.Leading and GetValue(change30 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change30 > change00, endOffset) else GetValue(hide30, 1);
+    def hide35 = if isStartBar then Performance == Performance.Leading and GetValue(change35 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change35 > change00, endOffset) else GetValue(hide35, 1);
+    def hide40 = if isStartBar then Performance == Performance.Leading and GetValue(change40 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change40 > change00, endOffset) else GetValue(hide40, 1);
+    def hide45 = if isStartBar then Performance == Performance.Leading and GetValue(change45 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change45 > change00, endOffset) else GetValue(hide45, 1);
+    def hide50 = if isStartBar then Performance == Performance.Leading and GetValue(change50 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change50 > change00, endOffset) else GetValue(hide50, 1);
+    def hide55 = if isStartBar then Performance == Performance.Leading and GetValue(change55 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change55 > change00, endOffset) else GetValue(hide55, 1);
+    def hide60 = if isStartBar then Performance == Performance.Leading and GetValue(change60 < change00, endOffset) or Performance == Performance.Lagging and GetValue(change60 > change00, endOffset) else GetValue(hide60, 1);
 ###
-
 
 ### PLOTS ###
     DefineGlobalColor("Line",       CreateColor(48, 48, 48));
@@ -262,7 +257,7 @@ declare lower;
 
     # Dividers
     AddVerticalLine(
-        visible = Separators and isNewPeriod and isActivePeriod[1],
+        visible = Separators and isNewPeriod and GetValue(isActivePeriod, 1),
         color   = GlobalColor("Separator"),
         stroke  = Curve.SHORT_DASH,
         text    = ""

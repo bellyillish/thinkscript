@@ -11,7 +11,7 @@
 
 
 ### LOOKUPS ###
-def rawValue = close(GetSymbol(), Period);
+def rawValue = close(period = Period);
 def rawIndex = close(Ticker, Period);
 
 
@@ -19,9 +19,8 @@ def rawIndex = close(Ticker, Period);
 def value = if !IsNaN(rawValue) then rawValue else 0;
 def index = if !IsNaN(rawIndex) then rawIndex else 0;
 
-def valueChange = 100 * (value / value[1] - 1);
-def indexChange = 100 * (index / index[1] - 1);
-
+def valueChange = if value[1] != 0 then 100 * (value / value[1] - 1) else Double.NaN;
+def indexChange = if index[1] != 0 then 100 * (index / index[1] - 1) else Double.NaN;
 
 ### PLOTS ###
 plot P = if !IsNaN(valueChange) and !IsNaN(valueChange)

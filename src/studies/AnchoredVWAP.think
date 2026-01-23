@@ -4,7 +4,6 @@ declare upper;
 #include_once "../lib/Value.think"
 #include_once "../lib/Periods.think"
 
-
 ### INPUTS ###
     input Anchor = {
         "Open",
@@ -31,12 +30,12 @@ declare upper;
         "SinceDate"
     };
 
+    input Deviations      = 0.0;
     @Date input SinceDate = 20250407;
     input CandlesAgo      = 100;
     input Separators      = yes;
     input Sanitize        = no;
 ###
-
 
 ### LOOKUPS ###
     def type;
@@ -60,29 +59,32 @@ declare upper;
     }
 ###
 
-
 ### CALCULATIONS ###
     def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
-    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
+    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNewAndValid;
 
-    def vwapSum;
     def volumeSum;
+    def vwapSum;
+    def devSum;
     if !Chart().isValidBar or !isActivePeriod {
         volumeSum = Double.NaN;
         vwapSum   = Double.NaN;
+        devSum    = Double.NaN;
     }
-    else if isNewPeriod or IsNaN(vwapSum[1] + volumeSum[1]) {
-        vwapSum   = volume * data;
+    else if isNewPeriod {
         volumeSum = volume;
+        vwapSum   = volume * data;
+        devSum    = volume * Sqr(data);
     }
     else {
-        vwapSum   = vwapSum [1]  + volume * data;
-        volumeSum = volumeSum[1] + volume;
+        volumeSum = GetValue(volumeSum, 1) + volume;
+        vwapSum   = GetValue(vwapSum, 1) + volume * data;
+        devSum    = GetValue(devSum, 1) + volume * Sqr(data);
     }
 
-    def anchored = vwapSum / volumeSum;
+    def anchored  = vwapSum / volumeSum;
+    def deviation = Sqrt(Max(devSum / volumeSum - Sqr(anchored), 0));
 ###
-
 
 ### PLOTS ###
     DefineGlobalColor("Separator",  CreateColor(32, 32, 32));
@@ -90,18 +92,28 @@ declare upper;
 
     # VWAP
     plot AnchoredVWAP = anchored;
-    AnchoredVWAP.DefineColor("Value", Color.LIGHT_GRAY);
+    AnchoredVWAP.DefineColor("Value", CreateColor(160, 160, 160));
     AnchoredVWAP.SetDefaultColor(AnchoredVWAP.Color("Value"));
-
     AnchoredVWAP.AssignValueColor(
         if isNewPeriod
             then GlobalColor("Background")
             else AnchoredVWAP.Color("Value")
     );
 
+    # Deviations
+    plot Upper = anchored + Deviations * deviation;
+    Upper.DefineColor("Value", CreateColor(48, 48, 48));
+    Upper.SetDefaultColor(Upper.Color("Value"));
+    Upper.SetHiding(Deviations <= 0);
+
+    plot Lower = anchored + -Deviations * deviation;
+    Lower.DefineColor("Value", CreateColor(48, 48, 48));
+    Lower.SetDefaultColor(Lower.Color("Value"));
+    Lower.SetHiding(Deviations <= 0);
+
     # Separators
     AddVerticalLine(
-        visible = Separators and isNewPeriod and isActivePeriod[1],
+        visible = Separators and isNewPeriod and GetValue(isActivePeriod, 1),
         color   = GlobalColor("Separator"),
         stroke  = Curve.SHORT_DASH,
         text    = ""

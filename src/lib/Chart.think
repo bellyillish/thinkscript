@@ -1,22 +1,30 @@
-#include_once "../lib/Date.think"
-
 script Chart {
-    input Validator = "$DJI";
+    def today  = GetYYYYMMDD();
+    def number = BarNumber();
 
-    def aggregation   = GetAggregationPeriod();
-    def isIntraday    = aggregation <  AggregationPeriod.DAY;
-    def isDaily       = aggregation == AggregationPeriod.DAY;
-    def isMultiDay    = aggregation >  AggregationPeriod.DAY;
-    def isIntradayBar = isIntraday and Date() == Date()[1];
-    def number        = BarNumber();
-    def startBar      = First(number);
-    def endBar        = HighestAll(number * !IsNaN(close(Validator)));
-    def isValidBar    = number between startBar and endBar;
-    def startOffset   = number - startBar;
-    def endOffset     = number - endBar;
-    def isStart       = number == startBar;
-    def isEnd         = number == endBar;
+    # Bar numbers
+    def startBar    = First(number);
+    def endBar      = HighestAll(number * !IsNaN(close));
+    def startOffset = number - startBar;
+    def endOffset   = number - endBar;
+
+    # Chart types
+    def isIntraday = GetAggregationPeriod() <  AggregationPeriod.DAY;
+    def isDaily    = GetAggregationPeriod() == AggregationPeriod.DAY;
+    def isMultiDay = GetAggregationPeriod() >  AggregationPeriod.DAY;
+
+    # Bar checks
+    def isValidBar = number between startBar and endBar;
+    def isStart    = number == startBar;
+    def isEnd      = number == endBar;
+
+    def isRTH = !isIntraday
+        or (GetTime() between RegularTradingStart(today) and RegularTradingEnd(today));
+
+    def isIntrabar = isRTH and GetValue(isRTH, 1)
+        and today == GetValue(today, 1)
+        or  !isRTH and !GetValue(isRTH, 1);
 
     plot P = Double.NaN;
-    P.hide();
+    P.Hide();
 }

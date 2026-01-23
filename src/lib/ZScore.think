@@ -1,0 +1,13 @@
+script ZScore {
+    input Value  = 0;
+    input Length = 90;
+
+    def dev = StDev(Value, Length);
+
+    def score = if dev == 0
+        then Double.NaN
+        else (Value - Average(Value, Length)) / dev;
+
+    plot P = score;
+    P.Hide();
+}

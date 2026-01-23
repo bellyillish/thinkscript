@@ -3,7 +3,6 @@ declare upper;
 #include_once "../lib/Date.think"
 #include_once "../lib/Chart.think"
 
-
 ### SCRIPTS ###
     script ExpectedMove {
         input Price   = 0;
@@ -16,7 +15,6 @@ declare upper;
         plot L    = Price - Move;
     }
 ###
-
 
 ### INPUTS ###
     input Period = {
@@ -51,7 +49,6 @@ declare upper;
     input Separators       = no;
 ###
 
-
 ### CALCULATIONS ####
     def hasOptions  = !IsNaN(SeriesVolatility(series = 1, expirationType = ExpirationType.REGULAR));
     def hasWeeklies = !IsNaN(SeriesVolatility(series = 6, expirationType = ExpirationType.WEEKLYS));
@@ -70,7 +67,7 @@ declare upper;
     }
 
     def fixOffset = if Anchor == Anchor."Current Open"
-        then BarNumber() - HighestAll(BarNumber() * (isLastPeriod  and !isLastPeriod[1]))
+        then BarNumber() - HighestAll(BarNumber() * (isLastPeriod  and !GetValue(isLastPeriod, 1)))
         else BarNumber() - HighestAll(BarNumber() * (!isLastPeriod and isLastPeriod[-1]));
 
     # Option Series
@@ -203,7 +200,12 @@ declare upper;
         l    = Double.NaN;
         h    = Double.NaN;
     }
-    else if !hasWeeklies and Period != Period.Monthly and Period != Period.Quarterly {
+    else if Volatility == Volatility.Series and !hasOptions {
+        move = Double.NaN;
+        l    = Double.NaN;
+        h    = Double.NaN;
+    }
+    else if Volatility == Volatility.Series and !hasWeeklies and Period != Period.Monthly and Period != Period.Quarterly {
         move = Double.NaN;
         l    = Double.NaN;
         h    = Double.NaN;
@@ -214,7 +216,6 @@ declare upper;
         h    = fixPrice + move;
     }
 ###
-
 
 ### PLOTS ###
     DefineGlobalColor("Line",       CreateColor(48, 48, 48));
@@ -238,7 +239,7 @@ declare upper;
 
     # Dividers
     AddVerticalLine(
-        visible = Separators and isLastPeriod != isLastPeriod[1],
+        visible = Separators and isLastPeriod != GetValue(isLastPeriod, 1),
         color   = GlobalColor("Separators"),
         stroke  = Curve.SHORT_DASH,
         text    = ""

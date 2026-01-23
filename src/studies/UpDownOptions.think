@@ -4,7 +4,7 @@ declare lower;
 #include_once "../lib/Value.think"
 #include_once "../lib/Filters.think"
 #include_once "../lib/Periods.think"
-
+#include_once "../lib/ZScore.think"
 
 ### INPUTS ###
     input Market = {
@@ -33,11 +33,13 @@ declare lower;
 
     input Display = {
         default "Difference",
-        "Tick",
         "Percentage",
-        "Ratio",
         "Log Ratio",
-        "Cumulative"
+        "Cumulative",
+        "Stack",
+        "Tick",
+        "Z-Score",
+        "Z-Sum"
     };
 
     input Period = {
@@ -62,7 +64,6 @@ declare lower;
     input Oscillation     = 0;
     input Smoothing       = 0;
 ###
-
 
 ### LOOKUPS ###
     def type;
@@ -149,9 +150,8 @@ declare lower;
     }
 ###
 
-
 ### CALCULATIONS ###
-    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
+    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNewAndValid;
     def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
 
     # Data Fixes
@@ -171,10 +171,10 @@ declare lower;
     def tickCalls;
     def tickPuts;
     def tickAll;
-    if Chart().isIntradayBar {
-        tickCalls = Max(0, calls - calls[1]);
-        tickPuts  = Max(0, puts - puts[1]);
-        tickAll   = Max(0, all - all[1]);
+    if Chart().isIntrabar {
+        tickCalls = Max(0, calls - GetValue(calls, 1));
+        tickPuts  = Max(0, puts  - GetValue(puts, 1));
+        tickAll   = Max(0, all   - GetValue(all, 1));
     }
     else {
         tickCalls = calls;
@@ -204,39 +204,48 @@ declare lower;
     }
 
     # Value
-    def rawValue;
+    def rawTick;
     switch (Display) {
-        case "Difference" : rawValue = up - dn;
-        case "Percentage" : rawValue = up / all;
-        case "Ratio"      : rawValue = up / dn;
-        case "Log Ratio"  : rawValue = Log(up / dn);
-        default           : rawValue = tickUp - tickDn;
+        case "Difference"  : rawTick = up - dn;
+        case "Percentage"  : rawTick = If(all != 0, up / all, 0);
+        case "Log Ratio"   : rawTick = If(up > 0 and dn > 0, Log(up / dn), 0);
+        case "Z-Score"     : rawTick = If(up > 0 and dn > 0, ZScore(Log(up / dn)), 0);
+        case "Z-Sum"       : rawTick = If(up > 0 and dn > 0, ZScore(Log(up / dn)), 0);
+        default            : rawTick = tickUp - tickDn;
     }
-
-    def filteredValue = Filters(rawValue, Oscillation, Smoothing);
 
     # Cumulative
-    def value;
-    if !Chart().isValidBar or !isActivePeriod {
-        value = Double.NaN;
+    def rawSum;
+    if IsNaN(rawTick) {
+        rawSum = GetValue(rawSum, 1);
     }
-    else if isNewPeriod or Display != Display.Cumulative {
-        value = filteredValue;
+    else if isNewPeriod {
+        rawSum = rawTick;
     }
     else {
-        value = value[1] + filteredValue;
+        rawSum = GetValue(rawSum, 1) + rawTick;
+    }
+
+    # Filters
+    def sum;
+    def tick;
+    if !Chart().isValidBar or !isActivePeriod or IsNaN(rawTick) {
+        tick = Double.NaN;
+        sum  = Double.NaN;
+    }
+    else {
+        tick = Filters(rawTick, Oscillation, Smoothing);
+        sum  = Filters(rawSum,  Oscillation, Smoothing);
     }
 
     # Neutral
     def neutral;
     switch (Display) {
         case "Percentage" : neutral = mean / (1 + mean);
-        case "Ratio"      : neutral = mean;
-        case "Log Ratio"  : neutral = Log(mean);
+        case "Log Ratio"  : neutral = If(mean > 0, Log(mean), Double.NaN);
         default           : neutral = 0;
     }
 ###
-
 
 ### PLOTS ###
     DefineGlobalColor("Line",       CreateColor(48, 48, 48));
@@ -244,13 +253,14 @@ declare lower;
     DefineGlobalColor("Background", CreateColor(12, 12, 12));
 
     # Value
-    plot UD = value;
+    plot UD = if Display == Display.Cumulative or Display == Display."Z-Sum" then sum else tick;
+    UD.SetHiding(Display == Display.Stack);
     UD.DefineColor("Up", Color.UPTICK);
     UD.DefineColor("Down", Color.DOWNTICK);
     UD.DefineColor("Neutral", Color.DARK_GRAY);
     UD.SetDefaultColor(UD.Color("Neutral"));
     UD.AssignValueColor(
-        if Separators and isNewPeriod and isActivePeriod[1]
+        if Separators and isNewPeriod and GetValue(isActivePeriod, 1)
             then GlobalColor("Background")
         else if UD > neutral
             then UD.Color("Up")
@@ -258,6 +268,19 @@ declare lower;
             then UD.Color("Down")
             else UD.Color("Neutral")
     );
+
+    # Stack
+    plot GU = tickCalls;
+    GU.SetHiding(Display != Display.Stack);
+    GU.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
+    GU.DefineColor("Value", Color.UPTICK);
+    GU.SetDefaultColor(GU.Color("Value"));
+
+    plot GD = -tickPuts;
+    GD.SetHiding(Display != Display.Stack);
+    GD.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
+    GD.DefineColor("Value", Color.DOWNTICK);
+    GD.SetDefaultColor(GD.Color("Value"));
 
     # Line
     plot N = neutral;
@@ -267,7 +290,7 @@ declare lower;
 
     # Separators
     AddVerticalLine(
-        visible = Separators and isNewPeriod and isActivePeriod[1],
+        visible = Separators and isNewPeriod and GetValue(isActivePeriod, 1),
         color   = GlobalColor("Separator"),
         stroke  = Curve.SHORT_DASH,
         text    = ""

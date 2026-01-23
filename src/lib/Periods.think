@@ -2,51 +2,83 @@
 #include_once "../lib/Chart.think"
 
 script Periods {
-    input period  = "Chart";
-    input since   = 20250407;
-    input candles = 100;
+    input Period  = "Chart";
+    input Since   = 20250407;
+    input Candles = 100;
 
-    def isStart     = Chart().isStart;
-    def endBar      = Chart().endBar;
-    def aggregation = GetAggregationPeriod();
+    def lastEarnings = Date().lastEarnings;
+    def yyyy         = Date().yyyy;
+    def yyyymm       = Date().yyyymm;
+    def yyyymmOpex   = Date().yyyymmOpex;
+    def yyyyq        = Date().yyyyq;
+    def yyyyqOpex    = Date().yyyyqOpex;
+    def yyyyww       = Date().yyyyww;
+    def endBar       = Chart().endBar;
+    def endOffset    = Chart().endOffset;
+    def isStart      = Chart().isStart;
 
     def isNew;
-    if period == "Daily" and aggregation <= AggregationPeriod.FOUR_HOURS {
-        isNew = isStart or Date() != Date()[1];
+    def isValid;
+    def isLatest;
+    if Period == "Daily" {
+        isNew    = isStart or GetYYYYMMDD() != GetValue(GetYYYYMMDD(), 1);
+        isLatest = GetYYYYMMDD() == GetValue(GetYYYYMMDD(), endOffset);
+        isValid  = GetAggregationPeriod() <= AggregationPeriod.TWO_HOURS;
     }
-    else if period == "Weekly" and aggregation <= AggregationPeriod.TWO_DAYS {
-        isNew = isStart or Date().yyyyww != Date().yyyyww[1];
+    else if Period == "Weekly" {
+        isNew    = isStart or yyyyww != GetValue(yyyyww, 1);
+        isLatest = yyyyww == GetValue(yyyyww, endOffset);
+        isValid  = GetAggregationPeriod() <= AggregationPeriod.DAY;
     }
-    else if period == "Monthly" and aggregation <= AggregationPeriod.WEEK {
-        isNew = isStart or Date().yyyymm != Date().yyyymm[1];
+    else if Period == "Monthly" {
+        isNew    = isStart or yyyymm != GetValue(yyyymm, 1);
+        isLatest = yyyymm == GetValue(yyyymm, endOffset);
+        isValid  = GetAggregationPeriod() <= AggregationPeriod.WEEK;
     }
-    else if period == "MonthlyOPEX" and aggregation <= AggregationPeriod.WEEK {
-        isNew = isStart or Date().yyyymmOpex != Date().yyyymmOpex[1];
+    else if Period == "MonthlyOPEX" {
+        isNew    = isStart or yyyymmOpex != GetValue(yyyymmOpex, 1);
+        isLatest = yyyymmOpex == GetValue(yyyymmOpex, endOffset);
+        isValid  = GetAggregationPeriod() <= AggregationPeriod.WEEK;
     }
-    else if period == "Quarterly" and aggregation <= AggregationPeriod.MONTH {
-        isNew = isStart or Date().yyyyq != Date().yyyyq[1];
+    else if Period == "Quarterly" {
+        isNew    = isStart or yyyyq != GetValue(yyyyq, 1);
+        isLatest = yyyyq == GetValue(yyyyq, endOffset);
+        isValid  = GetAggregationPeriod() <= AggregationPeriod.MONTH;
     }
-    else if period == "QuarterlyOPEX" and aggregation <= AggregationPeriod.MONTH {
-        isNew = isStart or Date().yyyyqOpex != Date().yyyyqOpex[1];
+    else if Period == "QuarterlyOPEX" {
+        isNew    = isStart or yyyyqOpex != GetValue(yyyyqOpex, 1);
+        isLatest = yyyyqOpex == GetValue(yyyyqOpex, endOffset);
+        isValid  = GetAggregationPeriod() <= AggregationPeriod.MONTH;
     }
-    else if period == "Earnings" and aggregation <= AggregationPeriod.MONTH {
-        isNew = isStart or Date().lastEarnings != Date().lastEarnings[1];
+    else if Period == "Earnings" {
+        isNew    = isStart or lastEarnings != GetValue(lastEarnings, 1);
+        isLatest = lastEarnings == GetValue(lastEarnings, endOffset);
+        isValid  = GetAggregationPeriod() <= AggregationPeriod.MONTH;
     }
-    else if period == "Yearly" and aggregation <= AggregationPeriod.QUARTER {
-        isNew = isStart or Date().yyyy != Date().yyyy[1];
+    else if Period == "Yearly" {
+        isNew    = isStart or yyyy != GetValue(yyyy, 1);
+        isLatest = yyyy == GetValue(yyyy, endOffset);
+        isValid  = GetAggregationPeriod() <= AggregationPeriod.QUARTER;
     }
-    else if period == "SinceDate" {
-        isNew = Date() >= since and (Date()[1] < since or isStart);
+    else if Period == "SinceDate" {
+        isNew    = GetYYYYMMDD() >= Since and (isStart or GetValue(GetYYYYMMDD(), 1) < Since);
+        isLatest = GetYYYYMMDD() >= Since;
+        isValid  = yes;
     }
-    else if period == "CandlesAgo" {
-        isNew = isStart and candles > endBar or BarNumber() + candles == endBar;
+    else if Period == "CandlesAgo" {
+        isNew    = isStart and Candles > endBar or BarNumber() + Candles == endBar;
+        isLatest = BarNumber() >= endBar - Candles;
+        isValid  = yes;
     }
     else {
-        isNew = isStart;
+        isNew    = isStart;
+        isValid  = yes;
+        isLatest = yes;
     }
 
-    def isActive = isNew or isActive[1];
+    def isActive      = isNew or GetValue(isActive, 1);
+    def isNewAndValid = isNew and isValid;
 
     plot P = isNew;
-    P.hide();
+    P.Hide();
 }

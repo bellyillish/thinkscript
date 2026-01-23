@@ -2,8 +2,6 @@ declare upper;
 
 #include_once "../lib/Chart.think"
 #include_once "../lib/Periods.think"
-#include_once "../lib/LatestPeriod.think"
-
 
 ### INPUTS ###
     input Type = {
@@ -41,11 +39,10 @@ declare upper;
     input Separators      = no;
 ###
 
-
 ### CALCULATIONS ###
-    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
+    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNewAndValid;
     def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
-    def isLatestPeriod = LatestPeriod(Period, SinceDate, CandlesAgo);
+    def isLatestPeriod = Periods(Period, SinceDate, CandlesAgo).isLatest;
 
     def height;
     switch (RowHeight) {
@@ -80,23 +77,23 @@ declare upper;
 
     def valuePOC = if !IsNaN(P.GetPointOfControl())
         then P.GetPointOfControl()
-        else valuePOC[1];
+        else GetValue(valuePOC, 1);
 
     def valueVAH = if !IsNaN(P.GetHighestValueArea())
         then P.GetHighestValueArea()
-        else valueVAH[1];
+        else GetValue(valueVAH, 1);
 
     def valueVAL = if !IsNaN(P.GetLowestValueArea())
         then P.GetLowestValueArea()
-        else valueVAL[1];
+        else GetValue(valueVAL, 1);
 
     def valueH = if !IsNaN(P.getHighest())
         then P.getHighest()
-        else valueH[1];
+        else GetValue(valueH, 1);
 
     def valueL = if !IsNaN(P.getLowest())
         then P.getLowest()
-        else valueL[1];
+        else GetValue(valueL, 1);
 
     def shouldPlot;
     if Expansion {
@@ -106,7 +103,6 @@ declare upper;
         shouldPlot = isActivePeriod and (ExtendLines or Chart().isValidBar);
     }
 ###
-
 
 ### PLOTS ###
     DefineGlobalColor("Profile",   CreateColor(48, 48, 48));

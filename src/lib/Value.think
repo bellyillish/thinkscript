@@ -1,24 +1,15 @@
 #include_once "../lib/Chart.think"
 
 script Value {
-    input raw    = 0;
-    input minRaw = 0;
-    input maxRaw = 0;
+    input raw = 0;
 
-    def minValue = if minRaw < 0 then minRaw else -999999999999999;
-    def maxValue = if maxRaw > 0 then maxRaw else  999999999999999;
-
-    def isValid;
-    if IsNaN(raw) or IsInfinite(raw) {
-        isValid = no;
+    def value;
+    if !IsNaN(raw) and !IsInfinite(raw) or !Chart().isValidBar {
+        value = raw;
     }
     else {
-        isValid = raw between minValue and maxValue;
+        value = CompoundValue(1, value[1], raw);
     }
-
-    def value = if isValid or !Chart().isValidBar
-        then raw
-        else value[1];
 
     plot P = value;
     P.hide();

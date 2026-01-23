@@ -5,7 +5,6 @@ declare zerobase;
 #include_once "../lib/Value.think"
 #include_once "../lib/Filters.think"
 
-
 ### INPUTS ###
     input Source = {
         default "Ticker",
@@ -22,7 +21,7 @@ declare zerobase;
 
     input Display = {
         default "Relative",
-        "Absolute"
+        "Total"
     };
 
     input Length     = 20;
@@ -31,7 +30,6 @@ declare zerobase;
     input Sanitize   = no;
     input Smoothing  = 0;
 ###
-
 
 ### LOOKUPS ###
     # Lookup
@@ -83,58 +81,57 @@ declare zerobase;
     }
 ###
 
-
 ### CALCULATIONS ###
     # Internals
     def tickVolume;
-    if Chart().isIntradayBar and Source != Source.Ticker {
-        tickVolume = dataVolume - dataVolume[1];
+    if Chart().isIntrabar and Source != Source.Ticker {
+        tickVolume = CompoundValue(1, dataVolume - dataVolume[1], 0);
     }
     else {
         tickVolume = dataVolume;
     }
 
     # Relative
-    def oscVolume  = Filters(tickVolume, Length, Smoothing);
-    def volumeDevs = StDev(tickVolume, Length);
-    def relVolume  = if !Negative
-        then Max(0, oscVolume / volumeDevs)
-        else oscVolume / volumeDevs;
+    def oscVolume;
+    def volumeDevs;
+    def relVolume;
+    if Length > 1 {
+        oscVolume  = Filters(tickVolume, Length, Smoothing);
+        volumeDevs = StDev(tickVolume, Length);
+        relVolume  =
+            if volumeDevs == 0
+                then 0
+            else if !Negative
+                then Max(0, oscVolume / volumeDevs)
+                else oscVolume / volumeDevs;
+    }
+    else {
+        oscVolume  = Double.NaN;
+        volumeDevs = Double.NaN;
+        relVolume  = Double.NaN;
+    }
 ###
-
 
 ### PLOTS ###
     DefineGlobalColor("Line",       CreateColor(48, 48, 48));
     DefineGlobalColor("Separator",  CreateColor(32, 32, 32));
     DefineGlobalColor("Background", CreateColor(12, 12, 12));
 
-    # Absolute
-    plot AV = tickVolume;
-    AV.SetHiding(Display != Display.Absolute);
-    AV.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
-    AV.DefineColor("Normal", CreateColor(72, 72, 72));
-    AV.DefineColor("Abnormal", Color.GRAY);
-    AV.AssignValueColor(
-        if relVolume >= Deviations
-            then AV.Color("Abnormal")
-            else AV.Color("Normal")
-    );
-
-    # Relative
-    plot RV = relVolume;
-    RV.SetHiding(Display != Display.Relative);
+    # Volume
+    plot RV = if Display == Display.Relative then relVolume else tickVolume;
     RV.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
     RV.DefineColor("AbnormalUp", Color.UPTICK);
     RV.DefineColor("AbnormalDn", Color.DOWNTICK);
-    RV.DefineColor("Abnormal", Color.LIGHT_GRAY);
-    RV.DefineColor("Positive", Color.GRAY);
-    RV.DefineColor("Negative", CreateColor(72, 72, 72));
+    RV.DefineColor("Abnormal", CreateColor(160, 160, 160));
+    RV.DefineColor("Positive", CreateColor(84, 84, 84));
+    RV.DefineColor("Negative", CreateColor(48, 48, 48));
+    RV.SetDefaultColor(RV.Color("Negative"));
     RV.AssignValueColor(
-        if relVolume >= Deviations and dataClose > dataClose[1]
+        if Deviations > 0 and relVolume >= Deviations and dataClose > GetValue(dataClose, 1)
             then RV.Color("AbnormalUp")
-        else if relVolume >= Deviations and dataClose < dataClose[1]
+        else if Deviations > 0 and relVolume >= Deviations and dataClose < GetValue(dataClose, 1)
             then RV.Color("AbnormalDn")
-        else if relVolume >= Deviations
+        else if Deviations > 0 and relVolume >= Deviations
             then RV.Color("Abnormal")
         else if relVolume > 0
             then RV.Color("Positive")
@@ -149,8 +146,8 @@ declare zerobase;
     D.HideTitle();
 
     plot N = 0;
+    N.SetHiding(Display != Display.Relative or !Negative);
     N.SetDefaultColor(GlobalColor("Line"));
     N.HideBubble();
     N.HideTitle();
-    N.Hide();
 ###

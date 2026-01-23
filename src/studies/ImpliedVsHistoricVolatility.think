@@ -1,5 +1,7 @@
 declare lower;
 
+#include_once "../lib/Filters.think"
+#include_once "../lib/ZScore.think"
 
 ### INPUTS ###
     input Display = {
@@ -7,52 +9,46 @@ declare lower;
         "Overlay"
     };
 
-    input Length      = 20;
+    input ZScored     = no;
+    input ZLength     = 90;
+    input HLength     = 20;
     input Oscillation = 0;
     input Smoothing   = 0;
 ###
 
-
 ### LOOKUPS ###
     def rawVI = imp_volatility();
-    def rawVH = HistoricalVolatility(Length);
+    def rawVH = HistoricalVolatility(HLength);
 ###
-
 
 ### CALCULATIONS ###
-    def rawRatio = Log(rawVI / rawVH);
-
-    # Oscillation
-    def oscVI;
-    def oscVH;
-    def oscRatio;
-    if Oscillation > 1 {
-        oscVI    = rawVI    - Average(rawVI, Oscillation);
-        oscVH    = rawVH    - Average(rawVH, Oscillation);
-        oscRatio = rawRatio - Average(rawRatio, Oscillation);
+    def rawRatio;
+    if rawVI > 0 and rawVH > 0 {
+        rawRatio = Log(rawVI / rawVH);
     }
     else {
-        oscVI    = rawVI;
-        oscVH    = rawVH;
-        oscRatio = rawRatio;
+        rawRatio = Double.NaN;
     }
 
-    # Smoothing
-    def vi;
-    def vh;
-    def ratio;
-    if Smoothing > 1 {
-        vi    = Inertia(oscVI, Smoothing);
-        vh    = Inertia(oscVH, Smoothing);
-        ratio = Inertia(oscRatio, Smoothing);
+    def dataVI;
+    def dataVH;
+    def dataRatio;
+    if ZScored {
+        dataVI    = ZScore(rawVI,    ZLength);
+        dataVH    = ZScore(rawVH,    ZLength);
+        dataRatio = ZScore(rawRatio, ZLength);
     }
     else {
-        vi    = oscVI;
-        vh    = oscVH;
-        ratio = oscRatio;
+        dataVI    = rawVI;
+        dataVH    = rawVH;
+        dataRatio = rawRatio;
     }
+
+    # Filters
+    def vi    = Filters(dataVI,    Oscillation, Smoothing);
+    def vh    = Filters(dataVH,    Oscillation, Smoothing);
+    def ratio = Filters(dataRatio, Oscillation, Smoothing);
 ###
-
 
 ### PLOTS ###
     DefineGlobalColor("Line", CreateColor(48, 48, 48));
@@ -72,7 +68,7 @@ declare lower;
     # Ratio
     plot R = ratio;
     R.SetHiding(Display != Display.Ratio);
-    R.DefineColor("Neutral", Color.DARK_GRAY);
+    R.DefineColor("Neutral", CreateColor(96, 96, 96));
     R.SetDefaultColor(R.Color("Neutral"));
     R.AssignValueColor(
         if ratio > 0
@@ -84,7 +80,6 @@ declare lower;
 
     # Mid
     plot Mid = 0;
-    Mid.SetHiding(Display != Display.Ratio);
     Mid.SetDefaultColor(GlobalColor("Line"));
     Mid.HideBubble();
     Mid.HideTitle();

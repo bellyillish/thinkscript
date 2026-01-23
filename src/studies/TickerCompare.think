@@ -5,7 +5,7 @@ declare real_size;
 #include_once "../lib/Value.think"
 #include_once "../lib/Filters.think"
 #include_once "../lib/Periods.think"
-
+#include_once "../lib/ZScore.think"
 
 ### INPUTS ###
     input TickerOne = "";
@@ -20,8 +20,8 @@ declare real_size;
         "HLC3",
         "OHLC4",
         "VWAP",
-        "One",
-        "Two"
+        "RTH",
+        "ETH"
     };
 
     input Mode = {
@@ -30,10 +30,15 @@ declare real_size;
         "Cloud"
     };
 
-    input Display = {
+    input Method = {
         default "Logarithmic",
-        "Relative",
-        "Absolute",
+        "ZScored",
+        "Absolute"
+    };
+
+    input Display = {
+        default "Sum",
+        "Correlation",
         "Tick"
     };
 
@@ -57,8 +62,8 @@ declare real_size;
     input Sanitize        = no;
     input Oscillation     = 0;
     input Smoothing       = 0;
+    input Length          = 60;
 ###
-
 
 ### LOOKUPS ###
     def type;
@@ -109,9 +114,8 @@ declare real_size;
     }
 ###
 
-
 ### CALCULATIONS ###
-    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNew;
+    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNewAndValid;
     def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
 
     # Logarithmic
@@ -119,80 +123,83 @@ declare real_size;
     def logOpenTwo;
     def logCloseOne;
     def logCloseTwo;
-    if Display == Display.Logarithmic {
-        logOpenOne  = Log(dataOpenOne);
-        logOpenTwo  = Log(dataOpenTwo);
-        logCloseOne = Log(dataCloseOne);
-        logCloseTwo = Log(dataCloseTwo);
-    }
-    else {
+    if Method == Method.Absolute {
         logOpenOne  = dataOpenOne;
         logOpenTwo  = dataOpenTwo;
         logCloseOne = dataCloseOne;
         logCloseTwo = dataCloseTwo;
     }
-
-    # Open
-    def startOne;
-    def startTwo;
-    if Quote == Quote.One and !Chart().isIntradayBar and !Chart().isMultiDay {
-        startOne = logOpenOne;
-        startTwo = logOpenTwo;
-    }
     else {
-        startOne = logCloseOne[1];
-        startTwo = logCloseTwo[1];
+        logOpenOne  = If(dataOpenOne  > 0, Log(dataOpenOne),  0);
+        logOpenTwo  = If(dataOpenTwo  > 0, Log(dataOpenTwo),  0);
+        logCloseOne = If(dataCloseOne > 0, Log(dataCloseOne), 0);
+        logCloseTwo = If(dataCloseTwo > 0, Log(dataCloseTwo), 0);
     }
 
-    # Close
-    def endOne;
-    def endTwo;
-    if Quote == Quote.Two and Chart().isIntradayBar {
-        endOne = logCloseOne[1];
-        endTwo = logCloseTwo[1];
+    def rawTickOne;
+    def rawTickTwo;
+    if Quote == Quote.RTH and !Chart().isRTH {
+        rawTickOne = 0;
+        rawTickTwo = 0;
     }
-    else if Quote == Quote.Two and !Chart().isMultiDay {
-        endOne = logOpenOne;
-        endTwo = logOpenTwo;
+    else if Quote == Quote.RTH and !Chart().isIntrabar {
+        rawTickOne = logCloseOne - logOpenOne;
+        rawTickTwo = logCloseTwo - logOpenTwo;
+    }
+    else if Quote == Quote.ETH and Chart().isRTH and !Chart().isIntrabar {
+        rawTickOne = CompoundValue(1, logOpenOne - logCloseOne[1], 0);
+        rawTickTwo = CompoundValue(1, logOpenTwo - logCloseTwo[1], 0);
+    }
+    else if Quote == Quote.ETH and Chart().isRTH {
+        rawTickOne = 0;
+        rawTickTwo = 0;
     }
     else {
-        endOne = logCloseOne;
-        endTwo = logCloseTwo;
+        rawTickOne = CompoundValue(1, logCloseOne - logCloseOne[1], logCloseOne - logOpenOne);
+        rawTickTwo = CompoundValue(1, logCloseTwo - logCloseTwo[1], logCloseTwo - logOpenTwo);
     }
 
     # Tick
-    def rawTickOne;
-    def rawTickTwo;
-    def rawTick;
-    if Display == Display.Relative {
-        rawTickOne = endOne / startOne - 1;
-        rawTickTwo = endTwo / startTwo - 1;
-        rawTick    = (endOne / startOne) / (endTwo / startTwo) - 1;
+    def zTickOne;
+    def zTickTwo;
+    def zTick;
+    if Method == Method.ZScored {
+        zTickOne = ZScore(rawTickOne, Length);
+        zTickTwo = ZScore(rawTickTwo, Length);
+        zTick    = zTickOne - zTickTwo;
     }
     else {
-        rawTickOne = endOne - startOne;
-        rawTickTwo = endTwo - startTwo;
-        rawTick    = rawTickOne - rawTickTwo;
+        zTickOne = rawTickOne;
+        zTickTwo = rawTickTwo;
+        zTick    = zTickOne - zTickTwo;
+    }
+
+    def rawCorr;
+    if Display == Display.Correlation {
+        rawCorr = Correlation(zTickOne, zTickTwo, Length);
+    }
+    else {
+        rawCorr = 0;
     }
 
     # Cumulative
     def rawSumOne;
     def rawSumTwo;
     def rawSum;
-    if isNewPeriod {
-        rawSumOne = rawTickOne;
-        rawSumTwo = rawTickTwo;
-        rawSum    = rawTick;
+    if IsNaN(zTick) {
+        rawSumOne = GetValue(rawSumOne, 1);
+        rawSumTwo = GetValue(rawSumTwo, 1);
+        rawSum    = GetValue(rawSum, 1);
     }
-    else if Display == Display.Relative {
-        rawSumOne = (rawSumOne[1] + 1) * (rawTickOne + 1) - 1;
-        rawSumTwo = (rawSumTwo[1] + 1) * (rawTickTwo + 1) - 1;
-        rawSum    = (rawSum[1] + 1) * (rawTick + 1) - 1;
+    else if isNewPeriod {
+        rawSumOne = zTickOne;
+        rawSumTwo = zTickTwo;
+        rawSum    = zTick;
     }
     else {
-        rawSumOne = rawSumOne[1] + rawTickOne;
-        rawSumTwo = rawSumTwo[1] + rawTickTwo;
-        rawSum    = rawSum[1] + rawTick;
+        rawSumOne = GetValue(rawSumOne, 1) + zTickOne;
+        rawSumTwo = GetValue(rawSumTwo, 1) + zTickTwo;
+        rawSum    = GetValue(rawSum, 1)    + zTick;
     }
 
     # Filters
@@ -200,20 +207,22 @@ declare real_size;
     def sumTwo;
     def sum;
     def tick;
-    if !Chart().isValidBar or !isActivePeriod {
+    def corr;
+    if !Chart().isValidBar or !isActivePeriod or IsNaN(zTick) {
         sumOne  = Double.NaN;
         sumTwo  = Double.NaN;
         sum     = Double.NaN;
         tick    = Double.NaN;
+        corr    = Double.NaN;
     }
     else {
         sumOne  = Filters(rawSumOne, Oscillation, Smoothing);
         sumTwo  = Filters(rawSumTwo, Oscillation, Smoothing);
-        sum     = Filters(rawSum, Oscillation, Smoothing);
-        tick    = Filters(rawTick, Oscillation, Smoothing);
+        sum     = Filters(rawSum,    Oscillation, Smoothing);
+        tick    = Filters(zTick,   Oscillation, Smoothing);
+        corr    = Filters(rawCorr,   Oscillation, Smoothing);
     }
 ###
-
 
 ### PLOTS ###
     DefineGlobalColor("Line",       CreateColor(48, 48, 48));
@@ -229,7 +238,7 @@ declare real_size;
     T.DefineColor("Neutral", Color.DARK_GRAY);
     T.SetDefaultColor(T.Color("Neutral"));
     T.AssignValueColor(
-        if Separators and isNewPeriod and isActivePeriod[1]
+        if Separators and isNewPeriod and GetValue(isActivePeriod, 1)
             then GlobalColor("Background")
         else if tick > 0
             then T.Color("Up")
@@ -238,15 +247,32 @@ declare real_size;
             else T.Color("Neutral")
     );
 
+    # Correlation
+    plot C = corr;
+    C.SetHiding(Display != Display.Correlation);
+    C.DefineColor("Up", Color.UPTICK);
+    C.DefineColor("Down", Color.DOWNTICK);
+    C.DefineColor("Neutral", Color.DARK_GRAY);
+    C.SetDefaultColor(C.Color("Neutral"));
+    C.AssignValueColor(
+        if Separators and isNewPeriod and GetValue(isActivePeriod, 1)
+            then GlobalColor("Background")
+        else if corr > 0
+            then C.Color("Up")
+        else if corr < 0
+            then C.Color("Down")
+            else C.Color("Neutral")
+    );
+
     # Cumulative
     plot S = sum;
-    S.SetHiding(Display == Display.Tick or Mode != Mode.Combined);
+    S.SetHiding(Display != Display.Sum or Mode != Mode.Combined);
     S.DefineColor("Up", Color.UPTICK);
     S.DefineColor("Down", Color.DOWNTICK);
     S.DefineColor("Neutral", Color.DARK_GRAY);
     S.SetDefaultColor(S.Color("Neutral"));
     S.AssignValueColor(
-        if Separators and isNewPeriod and isActivePeriod[1]
+        if Separators and isNewPeriod and GetValue(isActivePeriod, 1)
             then GlobalColor("Background")
         else if sum > 0
             then S.Color("Up")
@@ -257,22 +283,22 @@ declare real_size;
 
     # Cumulative One
     plot One = sumOne;
-    One.SetHiding(Display == Display.Tick or Mode == Mode.Combined);
+    One.SetHiding(Display != Display.Sum or Mode == Mode.Combined);
     One.DefineColor("Value", Color.UPTICK);
     One.SetDefaultColor(One.Color("Value"));
     One.AssignValueColor(
-        if Separators and isNewPeriod and isActivePeriod[1]
+        if Separators and isNewPeriod and GetValue(isActivePeriod, 1)
             then GlobalColor("Background")
             else One.Color("Value")
     );
 
     # Cumulative Two
     plot Two = sumTwo;
-    Two.SetHiding(Display == Display.Tick or Mode == Mode.Combined);
+    Two.SetHiding(Display != Display.Sum or Mode == Mode.Combined);
     Two.DefineColor("Value", Color.DOWNTICK);
     Two.SetDefaultColor(Two.Color("Value"));
     Two.AssignValueColor(
-        if Separators and isNewPeriod and isActivePeriod[1]
+        if Separators and isNewPeriod and GetValue(isActivePeriod, 1)
             then GlobalColor("Background")
             else Two.Color("Value")
     );
@@ -281,10 +307,10 @@ declare real_size;
     def cloudOne = sumTwo;
     def cloudTwo = sumOne;
     AddCloud(
-        data1 = if Mode == Mode.Cloud and Display != Display.Tick
+        data1 = if Mode == Mode.Cloud and Display == Display.Sum
             then cloudOne
             else Double.NaN,
-        data2 = if Mode == Mode.Cloud and Display != Display.Tick
+        data2 = if Mode == Mode.Cloud and Display == Display.Sum
             then cloudTwo
             else Double.NaN,
         color1 = One.Color("Value"),
@@ -300,7 +326,7 @@ declare real_size;
 
     # Separators
     AddVerticalLine(
-        visible = Separators and isNewPeriod and isActivePeriod[1],
+        visible = Separators and isNewPeriod and GetValue(isActivePeriod, 1),
         color   = GlobalColor("Separator"),
         stroke  = Curve.SHORT_DASH,
         text    = ""

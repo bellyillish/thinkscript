@@ -4,7 +4,6 @@ declare zerobase;
 #include_once "../lib/Chart.think"
 #include_once "../lib/Value.think"
 
-
 ### SCRIPTS ###
     script CompareSelf {
         input Data   = 0;
@@ -36,7 +35,6 @@ declare zerobase;
         C.hide();
     }
 ###
-
 
 ### INPUTS ###
     input Ticker = "";
@@ -72,14 +70,13 @@ declare zerobase;
     input CompareLength = 12;
     input AverageLength = 12;
     input CompareOffset = 0;
-    input LookBack      = 12;
-    input LookAhead     = 0;
+    input PaintBack     = 12;
+    input PaintAhead    = 0;
     input CalcAhead     = 6;
     input Sanitize      = no;
     input Labels        = yes;
     input LabelSize     = FontSize.SMALL;
 ###
-
 
 ### LOOKUPS ###
     def type;
@@ -121,7 +118,6 @@ declare zerobase;
     }
 ###
 
-
 ### CALCULATIONS ###
     def mostRecentBar = Chart().endBar - CompareOffset;
     def isRecentBar   = BarNumber() <= mostRecentBar and BarNumber() >= mostRecentBar - CompareLength + 1;
@@ -137,7 +133,7 @@ declare zerobase;
         value = data;
     }
     else {
-        value = data / data[1] - 1;
+        value = CompoundValue(1, data / data[1] - 1, 0);
     }
 
     # Score
@@ -159,7 +155,7 @@ declare zerobase;
     if isTooEarly or isRecentBar or !Chart().isValidBar {
         isMatch = no;
     }
-    else if score >=  Threshold and GetMaxValueOffset(score, CompareLength)[-Floor(CompareLength / 2)] == Floor(CompareLength / 2) {
+    else if score >=  Threshold and GetValue(GetMaxValueOffset(score, CompareLength), -Floor(CompareLength / 2)) == Floor(CompareLength / 2) {
         isMatch = yes;
     }
     else {
@@ -181,31 +177,31 @@ declare zerobase;
     def dnMatches;
     def ncMatches;
     if isMatch {
-        upSum     = upSum[1] + fwdReturns * (fwdReturns > 0);
-        dnSum     = dnSum[1] + fwdReturns * (fwdReturns < 0);
-        upMatches = upMatches[1] + (fwdReturns > 0);
-        dnMatches = dnMatches[1] + (fwdReturns < 0);
-        ncMatches = ncMatches[1] + (fwdReturns == 0);
+        upSum     = GetValue(upSum, 1)     + fwdReturns * (fwdReturns > 0);
+        dnSum     = GetValue(dnSum, 1)     + fwdReturns * (fwdReturns < 0);
+        upMatches = GetValue(upMatches, 1) + (fwdReturns > 0);
+        dnMatches = GetValue(dnMatches, 1) + (fwdReturns < 0);
+        ncMatches = GetValue(ncMatches, 1) + (fwdReturns == 0);
     }
     else {
-        upSum     = upSum[1];
-        dnSum     = dnSum[1];
-        upMatches = upMatches[1];
-        dnMatches = dnMatches[1];
-        ncMatches = ncMatches[1];
+        upSum     = GetValue(upSum, 1);
+        dnSum     = GetValue(dnSum, 1);
+        upMatches = GetValue(upMatches, 1);
+        dnMatches = GetValue(dnMatches, 1);
+        ncMatches = GetValue(ncMatches, 1);
     }
 
-    def upAvg     = upSum / upMatches;
-    def dnAvg     = dnSum / dnMatches;
-    def upPercent = upMatches / (upMatches + dnMatches + ncMatches);
+    def upAvg      = upSum / upMatches;
+    def dnAvg      = dnSum / dnMatches;
+    def allMatches = upMatches + dnMatches + ncMatches;
+    def upPercent  = upMatches / (allMatches);
 
-    def isPrevBar = fold ip = 0 to LookBack with vp
+    def isPrevBar = fold ip = 0 to PaintBack with vp
         do vp or GetValue(isMatch, -ip - 1) > 0;
 
-    def isNextBar = fold in = 0 to LookAhead with vn
+    def isNextBar = fold in = 0 to PaintAhead with vn
         do vn or GetValue(isMatch, in + 1) > 0;
 ###
-
 
 ### PLOTS ###
     DefineGlobalColor("Threshold", CreateColor(64, 64, 64));
@@ -269,12 +265,12 @@ declare zerobase;
 
     # Separators
     AddVerticalLine(
-        visible = isRecentBar != isRecentBar[1],
+        visible = isRecentBar != GetValue(isRecentBar, 1),
         color   = GlobalColor("Bar"),
         text    = ""
     );
     AddVerticalLine(
-        visible = Display == Display.Upper and isTooEarly != isTooEarly[1],
+        visible = Display == Display.Upper and isTooEarly != GetValue(isTooEarly, 1),
         color   = GlobalColor("Bar"),
         text    = ""
     );
@@ -292,19 +288,19 @@ declare zerobase;
         size     = LabelSize,
         color    = GlobalColor("Dn"),
         location = Location.TOP_RIGHT,
-        text     = " Dn Avg " + AsPercent(dnAvg) + " "
+        text     = " Dn Avg " + AsPercent(dnAvg) + " (" + CalcAhead + " Bars) "
     );
     AddLabel(
         visible  = Labels and CalcAhead > 0 and !IsNaN(upAvg),
         size     = LabelSize,
         color    = GlobalColor("Up"),
         location = Location.TOP_RIGHT,
-        text     = " Up Avg " + AsPercent(upAvg) + " "
+        text     = " Up Avg " + AsPercent(upAvg) + " (" + CalcAhead + " Bars) "
     );
     AddLabel(
         visible  = Labels,
         size     = LabelSize,
-        text     = " Found " + (upMatches + dnMatches + ncMatches) + " (" + AsPercent(upPercent) + " Positive) ",
+        text     = " Found " + (allMatches) + (if allMatches > 0 then " (" + AsPercent(upPercent) + " Positive) " else " "),
         location = Location.TOP_RIGHT,
         color    = GlobalColor("Recent")
     );
