@@ -1,36 +1,43 @@
-### INPUTS ###
-# input Ticker = "$SP1500";
-# input Ticker = "$SP500";
-# input Ticker = "$SP50EW";
-# input Ticker = "$SP400";
-# input Ticker = "$SP600";
-
-# input Period = AggregationPeriod.DAY;
-# input Period = AggregationPeriod.WEEK;
-# input Period = AggregationPeriod.MONTH;
+input Ticker = "$SP1500";
+input Ticker = "$SP500";
+input Ticker = "$SP50EW";
+input Ticker = "$SP400";
+input Ticker = "$SP600";
 
 
-### LOOKUPS ###
-def rawValue = close(period = Period);
-def rawIndex = close(Ticker, Period);
+# Symbol
+def dataOne = close;
+def prevOne = GetValue(dataOne, 1);
 
+def changeOne;
+if IsNaN(prevOne) or prevOne == 0 {
+    changeOne = 0;
+}
+else {
+    changeOne = dataOne / prevOne - 1;
+}
 
-### CALCULATIONS ###
-def value = if !IsNaN(rawValue) then rawValue else 0;
-def index = if !IsNaN(rawIndex) then rawIndex else 0;
+# Index
+def dataTwo = close(Ticker);
+def prevTwo = GetValue(dataTwo, 1);
 
-def valueChange = if value[1] != 0 then 100 * (value / value[1] - 1) else Double.NaN;
-def indexChange = if index[1] != 0 then 100 * (index / index[1] - 1) else Double.NaN;
+def changeTwo;
+if IsNaN(prevTwo) or prevTwo == 0 {
+    changeTwo = 0;
+}
+else {
+    changeTwo = dataTwo / prevTwo - 1;
+}
+
+# Difference
+def change = changeOne - changeTwo;
+
 
 ### PLOTS ###
-plot P = if !IsNaN(valueChange) and !IsNaN(valueChange)
-    then Round(valueChange - indexChange, 2)
-    else 0;
-
-P.DefineColor("Up",      CreateColor(0, 197, 49));
-P.DefineColor("Down",    CreateColor(255, 95, 95));
+plot P = Round(change * 100, 2);
+P.DefineColor("Up", CreateColor(0, 197, 49));
+P.DefineColor("Down", CreateColor(255, 95, 95));
 P.DefineColor("Neutral", GetColor(7));
-
 P.AssignValueColor(
     if P > 0 then P.Color("Up")
     else if P < 0 then P.Color("Down")

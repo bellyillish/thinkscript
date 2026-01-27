@@ -1,23 +1,20 @@
-### INPUTS ###
-input Period = AggregationPeriod.YEAR;
-# input Period = AggregationPeriod.MONTH;
-# input Period = AggregationPeriod.YEAR;
+# Calculations
+def data = close;
+def prev = GetValue(data, 1);
 
-### LOOKUPS ###
-def rawValue = close(period = Period);
+def change;
+if !IsNaN(prev) and prev != 0 {
+    change = data / prev - 1;
+}
+else {
+    change = Double.NaN;
+}
 
-### CALCULATIONS ###
-def value  = if !IsNaN(rawValue) then rawValue else 0;
-def change = if value != 0 then 100 * value / value[1] - 1 else Double.NaN;
-
-### PLOTS ###
-plot P = Round(change, 2);
-
-P.DefineColor("Up",      CreateColor(0, 197, 49));
-P.DefineColor("Down",    CreateColor(255, 95, 95));
+# Plots
+plot P = Round(change * 100, 2);
+P.DefineColor("Up", CreateColor(0, 197, 49));
+P.DefineColor("Down", CreateColor(255, 95, 95));
 P.DefineColor("Neutral", GetColor(7));
-
-
 P.AssignValueColor(
     if P > 0 then P.Color("Up")
     else if P < 0 then P.Color("Down")
