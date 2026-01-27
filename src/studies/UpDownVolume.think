@@ -2,7 +2,8 @@ declare lower;
 
 #include_once "../lib/Chart.think"
 #include_once "../lib/Value.think"
-#include_once "../lib/Filters.think"
+#include_once "../lib/Oscillate.think"
+#include_once "../lib/Smooth.think"
 #include_once "../lib/Periods.think"
 #include_once "../lib/ZScore.think"
 
@@ -186,8 +187,8 @@ declare lower;
         sum   = Double.NaN;
     }
     else {
-        value = Filters(rawValue, Oscillation, Smoothing);
-        sum   = Filters(rawSum,   Oscillation, Smoothing);
+        value = Smooth(Oscillate(rawValue, Oscillation), Smoothing);
+        sum   = Smooth(Oscillate(rawSum,   Oscillation), Smoothing);
     }
 
     # Neutral

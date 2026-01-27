@@ -1,6 +1,7 @@
 declare lower;
 
-#include_once "../lib/Filters.think"
+#include_once "../lib/Oscillate.think"
+#include_once "../lib/Smooth.think"
 #include_once "../lib/ZScore.think"
 
 ### INPUTS ###
@@ -45,9 +46,9 @@ declare lower;
     }
 
     # Filters
-    def vi    = Filters(dataVI,    Oscillation, Smoothing);
-    def vh    = Filters(dataVH,    Oscillation, Smoothing);
-    def ratio = Filters(dataRatio, Oscillation, Smoothing);
+    def vi    = Smooth(Oscillate(dataVI,    Oscillation), Smoothing);
+    def vh    = Smooth(Oscillate(dataVH,    Oscillation), Smoothing);
+    def ratio = Smooth(Oscillate(dataRatio, Oscillation), Smoothing);
 ###
 
 ### PLOTS ###

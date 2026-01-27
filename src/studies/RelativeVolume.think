@@ -3,7 +3,8 @@ declare zerobase;
 
 #include_once "../lib/Chart.think"
 #include_once "../lib/Value.think"
-#include_once "../lib/Filters.think"
+#include_once "../lib/Oscillate.think"
+#include_once "../lib/Smooth.think"
 
 ### INPUTS ###
     input Source = {
@@ -96,7 +97,7 @@ declare zerobase;
     def volumeDevs;
     def relVolume;
     if Length > 1 {
-        oscVolume  = Filters(tickVolume, Length, Smoothing);
+        oscVolume  = Smooth(Oscillate(tickVolume, Length), Smoothing);
         volumeDevs = StDev(tickVolume, Length);
         relVolume  =
             if volumeDevs == 0

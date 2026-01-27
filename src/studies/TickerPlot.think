@@ -3,7 +3,8 @@ declare real_size;
 
 #include_once "../lib/Chart.think"
 #include_once "../lib/Value.think"
-#include_once "../lib/Filters.think"
+#include_once "../lib/Oscillate.think"
+#include_once "../lib/Smooth.think"
 #include_once "../lib/Periods.think"
 #include_once "../lib/ZScore.think"
 
@@ -156,8 +157,8 @@ declare real_size;
         sum  = Double.NaN;
     }
     else {
-        tick = Filters(zTick, Oscillation, Smoothing);
-        sum  = Filters(rawSum,  Oscillation, Smoothing);
+        tick = Smooth(Oscillate(zTick,  Oscillation), Smoothing);
+        sum  = Smooth(Oscillate(rawSum, Oscillation), Smoothing);
     }
 ###
 

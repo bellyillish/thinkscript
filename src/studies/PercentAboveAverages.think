@@ -1,7 +1,8 @@
 declare lower;
 
 #include_once "../lib/Value.think"
-#include_once "../lib/Filters.think"
+#include_once "../lib/Oscillate.think"
+#include_once "../lib/Smooth.think"
 #include_once "../lib/Periods.think"
 
 ### INPUTS ###
@@ -118,7 +119,7 @@ declare lower;
     DefineGlobalColor("Background", CreateColor(12, 12, 12));
 
     # 50
-    plot V50 = Filters(value50, 0, Smoothing);
+    plot V50 = Smooth(value50, Smoothing);
     V50.SetHiding(Display == Display.Signal);
     V50.DefineColor("Value", Color.UPTICK);
     V50.AssignValueColor(
@@ -128,7 +129,7 @@ declare lower;
     );
 
     # 100
-    plot V100 = Filters(value100, 0, Smoothing);
+    plot V100 = Smooth(value100, Smoothing);
     V100.SetHiding(Display == Display.Signal);
     V100.DefineColor("Value", Color.ORANGE);
     V100.AssignValueColor(
@@ -138,7 +139,7 @@ declare lower;
     );
 
     # 200
-    plot V200 = Filters(value200, 0, Smoothing);
+    plot V200 = Smooth(value200, Smoothing);
     V200.SetHiding(Display == Display.Signal);
     V200.DefineColor("Value", Color.DOWNTICK);
     V200.AssignValueColor(
@@ -148,7 +149,7 @@ declare lower;
     );
 
     # Signal
-    plot S = Filters(signal, Oscillation, Smoothing);
+    plot S = Smooth(Oscillate(signal, Oscillation), Smoothing);
     S.SetHiding(Display != Display.Signal);
     S.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
     S.DefineColor("Up", Color.UPTICK);
