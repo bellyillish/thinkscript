@@ -1,0 +1,18 @@
+script RealizedVolatility {
+    input value     = 0;
+    input window    = 20;
+    input annualize = 252;
+
+    def volatility = StDev(value, window);
+
+    def annualized;
+    if annualize > 1 {
+        annualized = volatility * Sqrt(annualize);
+    }
+    else {
+        annualized = volatility;
+    }
+
+    plot P = annualized;
+    P.Hide();
+}

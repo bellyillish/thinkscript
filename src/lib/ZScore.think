@@ -1,13 +1,18 @@
 script ZScore {
-    input Value  = 0;
-    input Length = 90;
+    input value  = 0;
+    input window = 90;
 
-    def dev = StDev(Value, Length);
+    def mean = Average(value, window);
+    def dev  = StDev(value, window);
 
-    def score = if dev == 0
-        then Double.NaN
-        else (Value - Average(Value, Length)) / dev;
+    def zscore;
+    if dev != 0 {
+        zscore = (value - mean) / dev;
+    }
+    else {
+        zscore = Double.NaN;
+    }
 
-    plot P = score;
+    plot P = zscore;
     P.Hide();
 }

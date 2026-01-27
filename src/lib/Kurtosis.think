@@ -1,0 +1,20 @@
+script Kurtosis {
+    input value  = 0;
+    input window = 60;
+    input excess = 3;
+
+    def mean    = Average(value, window);
+    def moment2 = Average(Power(value - mean, 2), window);
+    def moment4 = Average(Power(value - mean, 4), window);
+
+    def kurtosis;
+    if moment2 > 0 {
+        kurtosis = moment4 / Sqr(moment2) - excess;
+    }
+    else {
+        kurtosis = Double.NaN;
+    }
+
+    plot P = kurtosis;
+    P.Hide();
+}

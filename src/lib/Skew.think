@@ -1,0 +1,19 @@
+script Skewness {
+    input value  = 0;
+    input window = 60;
+
+    def mean    = Average(value, window);
+    def moment2 = Average(Power(value - mean, 2), window);
+    def moment3 = Average(Power(value - mean, 3), window);
+
+    def skewness;
+    if moment2 > 0 {
+        skewness = moment3 / Power(moment2, 1.5);
+    }
+    else {
+        skewness = Double.NaN;
+    }
+
+    plot P = skewness;
+    P.Hide();
+}

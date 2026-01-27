@@ -1,0 +1,18 @@
+script Winsor {
+    input value     = 0;
+    input window    = 252;
+    input looseness = 2.5;
+    input min       = 1.5;
+    input max       = 6;
+
+    def mean   = Average(AbsValue(value), window);
+    def dev    = StDev(AbsValue(value), window);
+    def capped = Max(min, Min(max, mean + looseness * dev));
+
+    def exp1     = Exp(value  / capped);
+    def exp2     = Exp(-value / capped);
+    def winsored = capped * (exp1 - exp2) / (exp1 + exp2);
+
+    plot P = winsored;
+    P.Hide();
+}
