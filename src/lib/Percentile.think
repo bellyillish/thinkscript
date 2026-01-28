@@ -1,0 +1,24 @@
+script Percentile {
+    input value  = 0;
+    input window = 252;
+
+    def sumLess = fold i1 = 1 to window + 1 with s1 = 0
+        do s1 + (if value > GetValue(value, i1) then 1 else 0);
+
+    def sumSame = fold i2 = 1 to window + 1 with s2 = 0
+        do s2 + (if value == GetValue(value, i2) then 0.5 else 0);
+
+    def sumAll = fold i3 = 1 to window + 1 with s3 = 0
+        do s3 + (if !IsNaN(value) then 1 else 0);
+
+    def percentile;
+    if sumAll > 0 {
+        percentile = (sumLess + sumSame) / sumAll;
+    }
+    else {
+        percentile = Double.NaN;
+    }
+
+    plot P = percentile;
+    P.Hide();
+}

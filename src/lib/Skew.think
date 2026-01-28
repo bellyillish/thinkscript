@@ -1,17 +1,26 @@
 script Skewness {
     input value  = 0;
+    input unbias = no;
     input window = 60;
 
     def mean    = Average(value, window);
     def moment2 = Average(Power(value - mean, 2), window);
     def moment3 = Average(Power(value - mean, 3), window);
 
-    def skewness;
+    def raw;
     if moment2 > 0 {
-        skewness = moment3 / Power(moment2, 1.5);
+        raw = moment3 / Power(moment2, 1.5);
     }
     else {
-        skewness = Double.NaN;
+        raw = Double.NaN;
+    }
+
+    def skewness;
+    if unbias and window > 2 {
+        skewness = Sqrt(window * (window - 1)) / (window - 2) * raw;
+    }
+    else {
+        skewness = raw;
     }
 
     plot P = skewness;

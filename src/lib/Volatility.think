@@ -1,4 +1,4 @@
-script RealizedVolatility {
+script Volatility {
     input value     = 0;
     input window    = 20;
     input annualize = 252;

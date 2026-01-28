@@ -1,5 +1,6 @@
 script Kurtosis {
     input value  = 0;
+    input unbias = no;
     input window = 60;
     input excess = 3;
 
@@ -7,12 +8,20 @@ script Kurtosis {
     def moment2 = Average(Power(value - mean, 2), window);
     def moment4 = Average(Power(value - mean, 4), window);
 
-    def kurtosis;
+    def raw;
     if moment2 > 0 {
-        kurtosis = moment4 / Sqr(moment2) - excess;
+        raw = moment4 / Sqr(moment2);
     }
     else {
-        kurtosis = Double.NaN;
+        raw = Double.NaN;
+    }
+
+    def kurtosis;
+    if unbias and window > 3 {
+        kurtosis = ((window - 1) / ((window - 2) * (window - 3))) * ((window + 1) * (raw - excess) + 6);
+    }
+    else {
+        kurtosis = raw - excess;
     }
 
     plot P = kurtosis;
