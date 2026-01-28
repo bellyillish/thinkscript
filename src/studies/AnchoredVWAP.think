@@ -32,7 +32,7 @@ declare upper;
 
     input Deviations      = 0.0;
     @Date input SinceDate = 20250407;
-    input CandlesAgo      = 100;
+    input CandlesAgo      = 252;
     input Separators      = yes;
     input Sanitize        = no;
 ###

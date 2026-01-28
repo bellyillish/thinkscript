@@ -35,7 +35,7 @@ declare upper;
     };
 
     @Date input SinceDate = 20250407;
-    input CandlesAgo      = 100;
+    input CandlesAgo      = 252;
     input Separators      = no;
 ###
 
