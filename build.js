@@ -67,14 +67,11 @@ async function expandIncludes({
 
     if (isOnce) {
       if (includedOnceSet.has(resolved)) {
-        // out += `\n/* SKIP INCLUDE_ONCE (already included): ${relFromRoot} */\n`;
         lastIndex = matchEnd;
         continue;
       }
       includedOnceSet.add(resolved);
     }
-
-    // out += `\n/* BEGIN INCLUDE${isOnce ? "_ONCE" : ""}: ${relFromRoot} */\n`;
 
     const included = await expandIncludes({
       filePath: resolved,
@@ -86,15 +83,11 @@ async function expandIncludes({
     });
 
     out += included;
-    // out += `\n/* END INCLUDE${isOnce ? "_ONCE" : ""}: ${relFromRoot} */\n`;
-
     lastIndex = matchEnd;
   }
 
   // remaining tail after last include
   out += text.slice(lastIndex);
-  out = out.replaceAll(/(\r|\n){3,}/g, "\n\n")
-
   return out;
 }
 
@@ -155,7 +148,7 @@ async function buildOnce(config) {
     const relEntry = path.relative(entryDirAbs, entryAbs);
     const outAbs = path.join(distDirAbs, relEntry);
 
-    const expanded = await expandIncludes({
+    let expanded = await expandIncludes({
       filePath: entryAbs,
       projectRoot,
       includeRe,
@@ -163,6 +156,21 @@ async function buildOnce(config) {
       rawCache,
       includedOnceSet
     });
+
+    if (config.tokens) {
+      for (const [name, value] of Object.entries(config.tokens)) {
+        expanded = expanded.replaceAll(`"{{${name}}}"`, value);
+      }
+    }
+
+    if (config.minify) {
+      expanded = expanded.replaceAll(/#.*/g, "").replaceAll(/(\r|\n|\s){1,}/g, " ");
+    }
+    else {
+      expanded = expanded.replaceAll(/(\r|\n){3,}/g, "\n\n");
+    }
+
+    expanded = expanded.trim();
 
     const banner = (config.banner || "")
       .replaceAll("{{TIMESTAMP}}", new Date().toISOString())

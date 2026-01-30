@@ -2,6 +2,9 @@
   "entryDir": "src/studies",
   "distDir": "dist",
   "extensions": [".think"],
-  "includeRegex": "(?:^|\\s)(#include_once|include_once|//\\s*@include_once|#include|include|//\\s*@include)\\s+\"?([^\";\\r\\n]+)\"?;?",
-  "banner": "###\n# SRC: {{SOURCE}} | {{TIMESTAMP}}\n###\n\n"
+  "includeRegex": "(?:^|\\s)(#include_once|#include)\\s+\"?([^\";\\r\\n]+)\"?;?",
+  "banner": "###\n# {{SOURCE}} @ {{TIMESTAMP}}\n###\n",
+  "minify": true,
+
+  "tokens": {}
 }
