@@ -1,7 +1,7 @@
 script Winsor {
     input value     = 0;
-    input window    = 252;
     input looseness = 2.5;
+    input window    = 252;
     input min       = 1.5;
     input max       = 6;
 

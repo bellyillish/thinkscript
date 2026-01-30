@@ -1,0 +1,36 @@
+script Autocorrelate {
+    input data   = 0;
+    input offset = 5;
+    input window = 20;
+
+    def meanOne = fold indexOne = 0
+        to   window
+        with sumOne
+        do   sumOne + GetValue(data, indexOne) / window;
+
+    def meanTwo = GetValue(meanOne, offset);
+
+    def meanAll = fold indexAll = 0
+        to   window
+        with sumAll
+        do   sumAll + GetValue(data, indexAll) * GetValue(data, indexAll + offset) / window;
+
+    def meanSqr = fold indexSqr = 0
+        to   window
+        with sumSqr
+        do   sumSqr + Sqr(GetValue(data, indexSqr)) / window;
+
+    def stdOne = Sqrt(Max(0, meanSqr - Sqr(meanOne)));
+    def stdTwo = GetValue(stdOne, offset);
+
+    def correlated;
+    if !IsNaN(stdOne) and !IsNaN(stdTwo) and stdOne != 0 and stdTwo != 0 {
+        correlated = (meanAll - meanOne * meanTwo) / (stdOne * stdTwo);
+    }
+    else {
+        correlated = Double.NaN;
+    }
+
+    plot P = correlated;
+    P.Hide();
+}
