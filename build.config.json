@@ -1,10 +1,43 @@
 {
-  "entryDir": "src/studies",
-  "distDir": "dist",
-  "extensions": [".think"],
-  "includeRegex": "(?:^|\\s)(#include_once|#include)\\s+\"?([^\";\\r\\n]+)\"?;?",
-  "banner": "###\n# {{SOURCE}} @ {{TIMESTAMP}}\n###\n",
-  "minify": true,
+  "entryDir"      : "src/studies",
+  "distDir"       : "dist",
+  "extensions"    : [".think"],
+  "includeRegex"  : "(?:^|\\s)(#include_once|#include)\\s+\"?([^\";\\r\\n]+)\"?;?",
+  "banner"        : "###\n# {{SOURCE}} @ {{TIMESTAMP}}\n###\n",
+  "minify"        : false,
 
-  "tokens": {}
+  "tokens": {
+    "LIGHT.GRAY"   : "CreateColor(107, 107, 107)",
+    "LIGHT.YELLOW" : "CreateColor(126, 107, 0)",
+    "LIGHT.ORANGE" : "CreateColor(167, 77, 0)",
+    "LIGHT.RED"    : "CreateColor(179, 52, 61)",
+    "LIGHT.VIOLET" : "CreateColor(164, 57, 132)",
+    "LIGHT.PURPLE" : "CreateColor(126, 76, 181)",
+    "LIGHT.BLUE"   : "CreateColor(53, 100, 197)",
+    "LIGHT.TEAL"   : "CreateColor(0, 122, 172)",
+    "LIGHT.AQUA"   : "CreateColor(0, 134, 115)",
+    "LIGHT.GREEN"  : "CreateColor(3, 128, 0)",
+
+    "MID.GRAY"   : "CreateColor(56, 56, 56)",
+    "MID.YELLOW" : "CreateColor(67, 57, 0)",
+    "MID.ORANGE" : "CreateColor(88, 40, 0)",
+    "MID.RED"    : "CreateColor(95, 28, 32)",
+    "MID.VIOLET" : "CreateColor(87, 30, 69)",
+    "MID.PURPLE" : "CreateColor(67, 40, 96)",
+    "MID.BLUE"   : "CreateColor(28, 53, 104)",
+    "MID.TEAL"   : "CreateColor(0, 65, 91)",
+    "MID.AQUA"   : "CreateColor(0, 70, 61)",
+    "MID.GREEN"  : "CreateColor(2, 68, 0)",
+
+    "DARK.GRAY"    : "CreateColor(24, 24, 24)",
+    "DARK.YELLOW"  : "CreateColor(28, 24, 0)",
+    "DARK.ORANGE"  : "CreateColor(37, 17, 0)",
+    "DARK.RED"     : "CreateColor(40, 12, 14)",
+    "DARK.VIOLET"  : "CreateColor(36, 13, 29)",
+    "DARK.PURPLE"  : "CreateColor(28, 17, 40)",
+    "DARK.BLUE"    : "CreateColor(12, 22, 44)",
+    "DARK.TEAL"    : "CreateColor(0, 27, 38)",
+    "DARK.AQUA"    : "CreateColor(0, 30, 25)",
+    "DARK.GREEN"   : "CreateColor(1, 28, 0)"
+  }
 }

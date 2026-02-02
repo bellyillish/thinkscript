@@ -1,18 +1,38 @@
+###
+# Winsor
+#   - data
+#   - window
+#   - threshold
+#   - strength
+###
+
 script Winsor {
-    input value     = 0;
-    input looseness = 2.5;
-    input window    = 252;
-    input min       = 1.5;
-    input max       = 6;
+    input data      = 0;
+    input window    = 250;
+    input threshold = 2.0;
+    input strength  = 0.25;
 
-    def mean   = Average(AbsValue(value), window);
-    def dev    = StDev(AbsValue(value), window);
-    def capped = Max(min, Min(max, mean + looseness * dev));
+    def dev     = StDev(data, window);
+    def mean    = Average(data, window);
+    def bandOne = mean + dev * threshold;
+    def bandTwo = mean - dev * threshold;
+    def capped  = Min(bandOne, Max(data, bandTwo));
 
-    def exp1     = Exp(value  / capped);
-    def exp2     = Exp(-value / capped);
-    def winsored = capped * (exp1 - exp2) / (exp1 + exp2);
+    def excess;
+    if dev > 0 {
+        excess = (data - capped) / dev;
+    }
+    else {
+        excess = 0;
+    }
 
-    plot P = winsored;
-    P.Hide();
+    def exponent;
+    if AbsValue(excess) < 1 {
+        exponent = 1 + Max(0, strength);
+    }
+    else {
+        exponent = 1 - Max(0, strength);
+    }
+
+    plot winsor = capped + dev * Power(AbsValue(excess), exponent) * Sign(excess);
 }

@@ -1,11 +1,18 @@
-script Skewness {
-    input value  = 0;
-    input unbias = no;
+###
+# Skew
+#   - data
+#   - debias
+#   - window
+###
+
+script Skew {
+    input data   = 0;
+    input debias = no;
     input window = 60;
 
-    def mean    = Average(value, window);
-    def moment2 = Average(Power(value - mean, 2), window);
-    def moment3 = Average(Power(value - mean, 3), window);
+    def mean    = Average(data, window);
+    def moment2 = Average(Power(data - mean, 2), window);
+    def moment3 = Average(Power(data - mean, 3), window);
 
     def raw;
     if moment2 > 0 {
@@ -15,14 +22,11 @@ script Skewness {
         raw = Double.NaN;
     }
 
-    def skewness;
-    if unbias and window > 2 {
-        skewness = Sqrt(window * (window - 1)) / (window - 2) * raw;
+    plot skew;
+    if debias and window > 2 {
+        skew = Sqrt(window * (window - 1)) / (window - 2) * raw;
     }
     else {
-        skewness = raw;
+        skew = raw;
     }
-
-    plot P = skewness;
-    P.Hide();
 }

@@ -2,9 +2,8 @@ declare lower;
 declare real_size;
 
 #include_once "../lib/Chart.think"
-#include_once "../lib/Value.think"
+#include_once "../lib/Sanitizer.think"
 #include_once "../lib/Oscillate.think"
-#include_once "../lib/Smooth.think"
 #include_once "../lib/Periods.think"
 #include_once "../lib/ZScore.think"
 
@@ -62,7 +61,6 @@ declare real_size;
     input Separators      = yes;
     input Sanitize        = no;
     input Oscillation     = 0;
-    input Smoothing       = 0;
     input Length          = 60;
 ###
 
@@ -102,10 +100,10 @@ declare real_size;
     def dataCloseOne;
     def dataCloseTwo;
     if Sanitize {
-        dataOpenOne  = Value(rawOpenOne);
-        dataOpenTwo  = Value(rawOpenTwo);
-        dataCloseOne = Value(rawCloseOne);
-        dataCloseTwo = Value(rawCloseTwo);
+        dataOpenOne  = Sanitizer(rawOpenOne);
+        dataOpenTwo  = Sanitizer(rawOpenTwo);
+        dataCloseOne = Sanitizer(rawCloseOne);
+        dataCloseTwo = Sanitizer(rawCloseTwo);
     }
     else {
         dataOpenOne  = rawOpenOne;
@@ -217,11 +215,11 @@ declare real_size;
         corr    = Double.NaN;
     }
     else {
-        sumOne  = Smooth(Oscillate(rawSumOne, Oscillation), Smoothing);
-        sumTwo  = Smooth(Oscillate(rawSumTwo, Oscillation), Smoothing);
-        sum     = Smooth(Oscillate(rawSum,    Oscillation), Smoothing);
-        tick    = Smooth(Oscillate(zTick,     Oscillation), Smoothing);
-        corr    = Smooth(Oscillate(rawCorr,   Oscillation), Smoothing);
+        sumOne  = Oscillate(rawSumOne, Oscillation);
+        sumTwo  = Oscillate(rawSumTwo, Oscillation);
+        sum     = Oscillate(rawSum,    Oscillation);
+        tick    = Oscillate(zTick,     Oscillation);
+        corr    = Oscillate(rawCorr,   Oscillation);
     }
 ###
 

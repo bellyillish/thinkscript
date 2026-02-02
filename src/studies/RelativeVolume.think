@@ -2,9 +2,8 @@ declare lower;
 declare zerobase;
 
 #include_once "../lib/Chart.think"
-#include_once "../lib/Value.think"
+#include_once "../lib/Sanitizer.think"
 #include_once "../lib/Oscillate.think"
-#include_once "../lib/Smooth.think"
 
 ### INPUTS ###
     input Source = {
@@ -29,7 +28,6 @@ declare zerobase;
     input Deviations = 2.0;
     input Negative   = yes;
     input Sanitize   = no;
-    input Smoothing  = 0;
 ###
 
 ### LOOKUPS ###
@@ -73,8 +71,8 @@ declare zerobase;
     def dataVolume;
     def dataClose;
     if Sanitize {
-        dataVolume = Value(rawVolume);
-        dataClose  = Value(rawClose);
+        dataVolume = Sanitizer(rawVolume);
+        dataClose  = Sanitizer(rawClose);
     }
     else {
         dataVolume = rawVolume;
@@ -97,7 +95,7 @@ declare zerobase;
     def volumeDevs;
     def relVolume;
     if Length > 1 {
-        oscVolume  = Smooth(Oscillate(tickVolume, Length), Smoothing);
+        oscVolume  = Oscillate(tickVolume, Length);
         volumeDevs = StDev(tickVolume, Length);
         relVolume  =
             if volumeDevs == 0

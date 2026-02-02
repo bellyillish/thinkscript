@@ -10,7 +10,7 @@ script Date {
     def yyyymm   = yyyy * 100 + mm;
     def yyyyww   = (yyyy - (GetWeek() == 53 and GetDay() < 8)) * 100 + ww;
 
-    def isAfterOpex = (dom - 14 - if dow > 5 then dow - 5 else dow + 2) > 0;
+    def isAfterOpex    = (dom - 14 - if dow > 5 then dow - 5 else dow + 2) > 0;
     def isEndOfQuarter = mm % 3 == 0;
 
     def qOpex = if q + isAfterOpex * isEndOfQuarter <= 4
@@ -36,5 +36,4 @@ script Date {
         else GetValue(lastEarnings, 1);
 
     plot P = yyyymmdd;
-    P.hide();
 }

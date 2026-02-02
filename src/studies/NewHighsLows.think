@@ -1,9 +1,8 @@
 declare lower;
 
 #include_once "../lib/Chart.think"
-#include_once "../lib/Value.think"
+#include_once "../lib/Sanitizer.think"
 #include_once "../lib/Oscillate.think"
-#include_once "../lib/Smooth.think"
 #include_once "../lib/Periods.think"
 #include_once "../lib/ZScore.think"
 
@@ -66,7 +65,6 @@ declare lower;
     input Separators      = yes;
     input Sanitize        = no;
     input Oscillation     = 0;
-    input Smoothing       = 0;
 ###
 
 ### LOOKUPS ###
@@ -236,8 +234,8 @@ declare lower;
     def lows;
     def highs;
     if Sanitize {
-        lows  = Value(rawLows);
-        highs = Value(rawHighs);
+        lows  = Sanitizer(rawLows);
+        highs = Sanitizer(rawHighs);
     }
     else {
         lows  = rawLows;
@@ -291,8 +289,8 @@ declare lower;
         sum   = Double.NaN;
     }
     else {
-        value = Smooth(Oscillate(rawValue, Oscillation), Smoothing);
-        sum   = Smooth(Oscillate(rawSum,   Oscillation), Smoothing);
+        value = Oscillate(rawValue, Oscillation);
+        sum   = Oscillate(rawSum,   Oscillation);
     }
 
     # Neutral

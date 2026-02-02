@@ -1,7 +1,7 @@
 declare upper;
 
 #include_once "../lib/Chart.think"
-#include_once "../lib/Value.think"
+#include_once "../lib/Sanitizer.think"
 #include_once "../lib/Periods.think"
 
 ### INPUTS ###
@@ -52,7 +52,7 @@ declare upper;
 
     def data;
     if Sanitize {
-        data = Value(Fundamental(type));
+        data = Sanitizer(Fundamental(type));
     }
     else {
         data = Fundamental(type);

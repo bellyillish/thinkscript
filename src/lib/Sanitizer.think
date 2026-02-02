@@ -1,0 +1,22 @@
+###
+# Sanitize
+#   - data
+###
+
+#include_once "./Chart.think"
+
+script Sanitizer {
+    input data = 0;
+
+    def isValidBar = Chart().isValidBar;
+
+    def sanitized;
+    if !isValidBar or !IsNaN(data) and !IsInfinite(data) {
+        sanitized = data;
+    }
+    else {
+        sanitized = CompoundValue(1, sanitized[1], data);
+    }
+
+    plot sanitizer = sanitized;
+}

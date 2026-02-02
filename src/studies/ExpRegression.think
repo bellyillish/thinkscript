@@ -1,6 +1,6 @@
 declare upper;
 
-#include_once "../lib/Value.think"
+#include_once "../lib/Sanitizer.think"
 
 ### INPUTS ###
     input Quote = {
@@ -37,7 +37,7 @@ declare upper;
 
     def data;
     if Sanitize {
-        data = Value(Fundamental(type));
+        data = Sanitizer(Fundamental(type));
     }
     else {
         data = Fundamental(type);

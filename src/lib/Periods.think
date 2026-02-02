@@ -1,10 +1,17 @@
-#include_once "../lib/Date.think"
-#include_once "../lib/Chart.think"
+###
+# Periods
+#   - period
+#   - since
+#   - candles
+###
+
+#include_once "./Date.think"
+#include_once "./Chart.think"
 
 script Periods {
-    input Period  = "Chart";
-    input Since   = 20250407;
-    input Candles = 100;
+    input period  = "Chart";
+    input since   = 20250407;
+    input candles = 100;
 
     def lastEarnings = Date().lastEarnings;
     def yyyy         = Date().yyyy;
@@ -20,54 +27,54 @@ script Periods {
     def isNew;
     def isValid;
     def isLatest;
-    if Period == "Daily" {
+    if period == "Daily" {
         isNew    = isStart or GetYYYYMMDD() != GetValue(GetYYYYMMDD(), 1);
         isLatest = GetYYYYMMDD() == GetValue(GetYYYYMMDD(), endOffset);
         isValid  = GetAggregationPeriod() <= AggregationPeriod.TWO_HOURS;
     }
-    else if Period == "Weekly" {
+    else if period == "Weekly" {
         isNew    = isStart or yyyyww != GetValue(yyyyww, 1);
         isLatest = yyyyww == GetValue(yyyyww, endOffset);
         isValid  = GetAggregationPeriod() <= AggregationPeriod.DAY;
     }
-    else if Period == "Monthly" {
+    else if period == "Monthly" {
         isNew    = isStart or yyyymm != GetValue(yyyymm, 1);
         isLatest = yyyymm == GetValue(yyyymm, endOffset);
         isValid  = GetAggregationPeriod() <= AggregationPeriod.WEEK;
     }
-    else if Period == "MonthlyOPEX" {
+    else if period == "MonthlyOPEX" {
         isNew    = isStart or yyyymmOpex != GetValue(yyyymmOpex, 1);
         isLatest = yyyymmOpex == GetValue(yyyymmOpex, endOffset);
         isValid  = GetAggregationPeriod() <= AggregationPeriod.WEEK;
     }
-    else if Period == "Quarterly" {
+    else if period == "Quarterly" {
         isNew    = isStart or yyyyq != GetValue(yyyyq, 1);
         isLatest = yyyyq == GetValue(yyyyq, endOffset);
         isValid  = GetAggregationPeriod() <= AggregationPeriod.MONTH;
     }
-    else if Period == "QuarterlyOPEX" {
+    else if period == "QuarterlyOPEX" {
         isNew    = isStart or yyyyqOpex != GetValue(yyyyqOpex, 1);
         isLatest = yyyyqOpex == GetValue(yyyyqOpex, endOffset);
         isValid  = GetAggregationPeriod() <= AggregationPeriod.MONTH;
     }
-    else if Period == "Earnings" {
+    else if period == "Earnings" {
         isNew    = isStart or lastEarnings != GetValue(lastEarnings, 1);
         isLatest = lastEarnings == GetValue(lastEarnings, endOffset);
         isValid  = GetAggregationPeriod() <= AggregationPeriod.MONTH;
     }
-    else if Period == "Yearly" {
+    else if period == "Yearly" {
         isNew    = isStart or yyyy != GetValue(yyyy, 1);
         isLatest = yyyy == GetValue(yyyy, endOffset);
         isValid  = GetAggregationPeriod() <= AggregationPeriod.QUARTER;
     }
-    else if Period == "SinceDate" {
-        isNew    = GetYYYYMMDD() >= Since and (isStart or GetValue(GetYYYYMMDD(), 1) < Since);
+    else if period == "SinceDate" {
+        isNew    = GetYYYYMMDD() >= since and (isStart or GetValue(GetYYYYMMDD(), 1) < Since);
         isLatest = GetYYYYMMDD() >= Since;
         isValid  = yes;
     }
-    else if Period == "CandlesAgo" {
-        isNew    = isStart and Candles > endBar or BarNumber() + Candles == endBar;
-        isLatest = BarNumber() >= endBar - Candles;
+    else if period == "CandlesAgo" {
+        isNew    = isStart and candles > endBar or  BarNumber() + candles == endBar;
+        isLatest = BarNumber() >= endBar - candles;
         isValid  = yes;
     }
     else {
@@ -78,7 +85,5 @@ script Periods {
 
     def isActive      = isNew or GetValue(isActive, 1);
     def isNewAndValid = isNew and isValid;
-
-    plot P = isNew;
-    P.Hide();
+    plot P = Double.NaN;
 }

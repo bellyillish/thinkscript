@@ -1,8 +1,7 @@
 declare lower;
 
-#include_once "../lib/Value.think"
+#include_once "../lib/Sanitizer.think"
 #include_once "../lib/Oscillate.think"
-#include_once "../lib/Smooth.think"
 #include_once "../lib/Periods.think"
 
 ### INPUTS ###
@@ -41,7 +40,6 @@ declare lower;
     input Separators      = yes;
     input Sanitize        = no;
     input Oscillation     = 0;
-    input Smoothing       = 0;
 ###
 
 ### LOOKUPS ###
@@ -66,10 +64,10 @@ declare lower;
     def data200;
     def dataAll;
     if Sanitize {
-        data50  = Value(raw50);
-        try100  = Value(raw100);
-        data200 = Value(raw200);
-        dataAll = Value(rawAll);
+        data50  = Sanitizer(raw50);
+        try100  = Sanitizer(raw100);
+        data200 = Sanitizer(raw200);
+        dataAll = Sanitizer(rawAll);
     }
     else {
         data50  = raw50;
@@ -119,7 +117,7 @@ declare lower;
     DefineGlobalColor("Background", CreateColor(12, 12, 12));
 
     # 50
-    plot V50 = Smooth(value50, Smoothing);
+    plot V50 = value50;
     V50.SetHiding(Display == Display.Signal);
     V50.DefineColor("Value", Color.UPTICK);
     V50.AssignValueColor(
@@ -129,7 +127,7 @@ declare lower;
     );
 
     # 100
-    plot V100 = Smooth(value100, Smoothing);
+    plot V100 = value100;
     V100.SetHiding(Display == Display.Signal);
     V100.DefineColor("Value", Color.ORANGE);
     V100.AssignValueColor(
@@ -139,7 +137,7 @@ declare lower;
     );
 
     # 200
-    plot V200 = Smooth(value200, Smoothing);
+    plot V200 = value200;
     V200.SetHiding(Display == Display.Signal);
     V200.DefineColor("Value", Color.DOWNTICK);
     V200.AssignValueColor(
@@ -149,7 +147,7 @@ declare lower;
     );
 
     # Signal
-    plot S = Smooth(Oscillate(signal, Oscillation), Smoothing);
+    plot S = Oscillate(signal, Oscillation);
     S.SetHiding(Display != Display.Signal);
     S.SetPaintingStrategy(PaintingStrategy.HISTOGRAM);
     S.DefineColor("Up", Color.UPTICK);

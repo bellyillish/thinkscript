@@ -1,12 +1,20 @@
+###
+# Kurtosis
+#   - data
+#   - debias
+#   - window
+#   - excess
+###
+
 script Kurtosis {
-    input value  = 0;
-    input unbias = no;
+    input data   = 0;
+    input debias = no;
     input window = 60;
     input excess = 3;
 
-    def mean    = Average(value, window);
-    def moment2 = Average(Power(value - mean, 2), window);
-    def moment4 = Average(Power(value - mean, 4), window);
+    def mean    = Average(data, window);
+    def moment2 = Average(Power(data - mean, 2), window);
+    def moment4 = Average(Power(data - mean, 4), window);
 
     def raw;
     if moment2 > 0 {
@@ -16,14 +24,11 @@ script Kurtosis {
         raw = Double.NaN;
     }
 
-    def kurtosis;
-    if unbias and window > 3 {
+    plot kurtosis;
+    if debias and window > 3 {
         kurtosis = ((window - 1) / ((window - 2) * (window - 3))) * ((window + 1) * (raw - excess) + 6);
     }
     else {
         kurtosis = raw - excess;
     }
-
-    plot P = kurtosis;
-    P.Hide();
 }

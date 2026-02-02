@@ -1,18 +1,21 @@
+###
+# ZScore
+#   - data
+#   - window
+###
+
 script ZScore {
-    input value  = 0;
+    input data   = 0;
     input window = 90;
 
-    def mean = Average(value, window);
-    def dev  = StDev(value, window);
+    def mean = Average(data, window);
+    def dev  = StDev(data, window);
 
-    def zscore;
+    plot zscore;
     if dev != 0 {
-        zscore = (value - mean) / dev;
+        zscore = (data - mean) / dev;
     }
     else {
         zscore = Double.NaN;
     }
-
-    plot P = zscore;
-    P.Hide();
 }

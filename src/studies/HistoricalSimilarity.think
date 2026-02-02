@@ -2,7 +2,7 @@ declare lower;
 declare zerobase;
 
 #include_once "../lib/Chart.think"
-#include_once "../lib/Value.think"
+#include_once "../lib/Sanitizer.think"
 
 ### SCRIPTS ###
     script CompareSelf {
@@ -103,7 +103,7 @@ declare zerobase;
 
     def cleanData;
     if Sanitize {
-        cleanData = Value(rawData);
+        cleanData = Sanitizer(rawData);
     }
     else {
         cleanData = rawData;

@@ -1,15 +1,18 @@
-script Oscillate {
-    input value  = 0;
-    input length = 0;
+###
+# Oscillate
+#   - data
+#   - window
+###
 
-    def osc;
-    if length > 1 {
-        osc = value - Average(value, length);
+script Oscillate {
+    input data   = 0;
+    input window = 0;
+
+    plot oscillate;
+    if window > 1 {
+        oscillate = data - Average(data, window);
     }
     else {
-        osc = value;
+        oscillate = data;
     }
-
-    plot P = osc;
-    P.Hide();
 }

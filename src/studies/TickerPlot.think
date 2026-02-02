@@ -2,9 +2,8 @@ declare lower;
 declare real_size;
 
 #include_once "../lib/Chart.think"
-#include_once "../lib/Value.think"
+#include_once "../lib/Sanitizer.think"
 #include_once "../lib/Oscillate.think"
-#include_once "../lib/Smooth.think"
 #include_once "../lib/Periods.think"
 #include_once "../lib/ZScore.think"
 
@@ -54,7 +53,6 @@ declare real_size;
     input Separators      = yes;
     input Sanitize        = no;
     input Oscillation     = 0;
-    input Smoothing       = 0;
     input Length          = 60;
 ###
 
@@ -86,8 +84,8 @@ declare real_size;
     def dataOpen;
     def dataClose;
     if Sanitize {
-        dataOpen  = Value(rawOpen);
-        dataClose = Value(rawClose);
+        dataOpen  = Sanitizer(rawOpen);
+        dataClose = Sanitizer(rawClose);
     }
     else {
         dataOpen  = rawOpen;
@@ -157,8 +155,8 @@ declare real_size;
         sum  = Double.NaN;
     }
     else {
-        tick = Smooth(Oscillate(zTick,  Oscillation), Smoothing);
-        sum  = Smooth(Oscillate(rawSum, Oscillation), Smoothing);
+        tick = Oscillate(zTick,  Oscillation);
+        sum  = Oscillate(rawSum, Oscillation);
     }
 ###
 

@@ -4,7 +4,7 @@ script Chart {
 
     # Bar numbers
     def startBar    = First(number);
-    def endBar      = HighestAll(number * !IsNaN(close));
+    def endBar      = CompoundValue(1, endBar[1], HighestAll(number * !IsNaN(close)));
     def startOffset = number - startBar;
     def endOffset   = number - endBar;
 
@@ -21,10 +21,10 @@ script Chart {
     def isRTH = !isIntraday
         or (GetTime() between RegularTradingStart(today) and RegularTradingEnd(today));
 
-    def isIntrabar = isRTH and GetValue(isRTH, 1)
+    def isIntrabar = isRTH
+        and GetValue(isRTH, 1)
         and today == GetValue(today, 1)
         or  !isRTH and !GetValue(isRTH, 1);
 
     plot P = Double.NaN;
-    P.Hide();
 }
