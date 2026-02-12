@@ -1,0 +1,31 @@
+###
+ # Skewness Filter
+###
+
+#include_once "../lib/Skew.think"
+#include_once "../lib/Percentile.think"
+#include_once "../lib/ZScore.think"
+
+script SkewnessFilter {
+    input data = 0;
+
+    def skew  = Skew(data);
+    def pskew = Percentile(skew);
+    def zskew = ZScore(skew);
+
+    def zRegimeType =
+        if      zskew >  1.0 then  2
+        else if zskew >  0.5 then  1
+        else if zskew < -2.0 then -2
+        else if zskew > -1.0 then -1
+        else 0;
+
+    def pRegimeType =
+        if      pskew > 0.9 then  2
+        else if pskew > 0.7 then  1
+        else if pskew < 0.1 then -2
+        else if pskew < 0.3 then -1
+        else 0;
+
+    plot P = Double.NaN;
+}

@@ -2,10 +2,10 @@ declare upper;
 
 #include_once "../lib/Chart.think"
 #include_once "../lib/Sanitizer.think"
-#include_once "../lib/Periods.think"
+#include_once "../lib/Period.think"
 
 ### INPUTS ###
-    input Anchor = {
+    input Price = {
         "Open",
         "High",
         "Low",
@@ -16,7 +16,7 @@ declare upper;
         default "VWAP"
     };
 
-    input Period = {
+    input Anchor = {
         default "Chart",
         "Daily",
         "Weekly",
@@ -39,7 +39,7 @@ declare upper;
 
 ### LOOKUPS ###
     def type;
-    switch (Anchor) {
+    switch (Price) {
         case "VWAP"  : type = FundamentalType.VWAP;
         case "Close" : type = FundamentalType.CLOSE;
         case "Open"  : type = FundamentalType.OPEN;
@@ -60,8 +60,8 @@ declare upper;
 ###
 
 ### CALCULATIONS ###
-    def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
-    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNewAndValid;
+    def isActivePeriod = Period(Anchor, SinceDate, CandlesAgo).isActive;
+    def isNewPeriod    = Period(Anchor, SinceDate, CandlesAgo).isNewAndValid;
 
     def volumeSum;
     def vwapSum;

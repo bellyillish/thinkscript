@@ -1,0 +1,61 @@
+###
+ # Mean Reversion Half Life Filter
+###
+
+#include_once "../lib/HalfLife.think"
+#include_once "../lib/Percentile.think"
+#include_once "../lib/ZScore.think"
+
+script HalfLifeFilter {
+    input data = 0;
+
+    def hl  = HalfLife(data);
+    def phl = Percentile(hl);
+    def zhl = ZScore(Log(hl));
+
+    def trendType =
+        if      IsNaN(hl) then Double.NaN
+        else if hl > 40   then  2
+        else if hl < 5    then -2
+        else if hl > 30   then  1
+        else if hl < 10   then -1
+        else 0;
+
+    def zTrendType =
+        if      IsNaN(zhl) then Double.NaN
+        else if zhl >  1.0 then  2
+        else if zhl < -1.0 then -2
+        else if zhl >  0.5 then  1
+        else if zhl < -0.5 then -1
+        else 0;
+
+    def pTrendType =
+        if      IsNaN(phl) then Double.NaN
+        else if phl > 0.8  then  2
+        else if phl < 0.2  then -2
+        else if phl > 0.7  then  1
+        else if phl < 0.3  then -1
+        else 0;
+
+    plot P = trendType;
+}
+
+###
+ # Mean Reversion Half Life Signal
+###
+script HalfLifeSignal {
+    input data    = 0;
+    input minDist = 1.5;
+
+    def mean       = HalfLife(data);
+    def trendType  = HalfLifeFilter(data).trendType;
+    def zTrendType = HalfLifeFilter(data).zTrendType;
+    def pTrendType = HalfLifeFilter(data).pTrendType;
+    def meanDist   = AbsValue(ZScore(data - mean));
+
+    def isSignal  = trendType  == -2 and meanDist > minDist;
+    def zIsSignal = zTrendType == -2 and meanDist > minDist;
+    def pIsSignal = pTrendType == -2 and meanDist > minDist;
+
+    plot P = isSignal;
+}

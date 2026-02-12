@@ -1,8 +1,19 @@
 ###
-# Autocorrelate
-#   - data
-#   - offset
-#   - window
+ # Autocorrelation
+ # Do returns tend to persist in the same direction, reverse, or behave independently?
+ #
+ # Inputs:
+ #   - data   = use log returns
+ #   - offset = lag, usually 1
+ #   - window
+ #     - 20–50 bars  = short-term regime
+ #     - 60–120 bars = swing/intermediate
+ #     - 252 bars    = structural bias (rarely useful for trading)
+ #
+ # Interpretation:
+ #   - positive  = persistence, trend-friendly
+ #   - negative  = reversal, mean-reversion-friendly
+ #   - near zero = randomness, noise, low edge
 ###
 
 script Autocorrelate {

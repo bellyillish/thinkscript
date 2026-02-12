@@ -4,7 +4,7 @@ declare real_size;
 #include_once "../lib/Chart.think"
 #include_once "../lib/Sanitizer.think"
 #include_once "../lib/Oscillate.think"
-#include_once "../lib/Periods.think"
+#include_once "../lib/Period.think"
 #include_once "../lib/ZScore.think"
 
 ### INPUTS ###
@@ -34,7 +34,7 @@ declare real_size;
         "Tick"
     };
 
-    input Period = {
+    input Anchor = {
         default "Chart",
         "Daily",
         "Weekly",
@@ -94,8 +94,8 @@ declare real_size;
 ###
 
 ### CALCULATIONS ###
-    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNewAndValid;
-    def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
+    def isNewPeriod    = Period(Anchor, SinceDate, CandlesAgo).isNewAndValid;
+    def isActivePeriod = Period(Anchor, SinceDate, CandlesAgo).isActive;
 
     # Logarithmic
     def logOpen;

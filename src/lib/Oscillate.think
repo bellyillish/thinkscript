@@ -1,7 +1,8 @@
 ###
 # Oscillate
+# Plot a value against its own rolling average.
 #   - data
-#   - window
+#   - window = rolling average window
 ###
 
 script Oscillate {

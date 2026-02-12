@@ -1,7 +1,7 @@
 declare lower;
 
 #include_once "../lib/Chart.think"
-#include_once "../lib/Periods.think"
+#include_once "../lib/Period.think"
 
 ### INPUTS ###
     input Cap = {
@@ -47,7 +47,7 @@ declare lower;
         "Overlay"
     };
 
-    input Period = {
+    input Anchor = {
         default "Chart",
         "Daily",
         "Weekly",
@@ -150,9 +150,9 @@ declare lower;
 ###
 
 ### CALCULATIONS ###
-    def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
-    def isLatestPeriod = Periods(Period, SinceDate, CandlesAgo).isLatest;
-    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNewAndValid;
+    def isActivePeriod = Period(Anchor, SinceDate, CandlesAgo).isActive;
+    def isLatestPeriod = Period(Anchor, SinceDate, CandlesAgo).isLatest;
+    def isNewPeriod    = Period(Anchor, SinceDate, CandlesAgo).isNewAndValid;
     def showBubbles    = isActivePeriod and isNewPeriod[-1] or Chart().isEnd;
     def isStartBar     = Chart().isStart;
     def endOffset      = Chart().endOffset;

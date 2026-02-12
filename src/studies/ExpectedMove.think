@@ -1,3 +1,29 @@
+###
+ # Expected Move
+ # Quarterly:
+ #   - P = current spot price
+ #   - V = IV for the option series that expires on 3/20/26 (back-month quarterly option series)
+ #   - E = 95 (calendar days until the 3/20/26 option series expires)
+ # Monthly:
+ #   - P = current spot price
+ #   - V = IV for the option series that expires on 1/16/26 (back-month monthly option series)
+ #   - E = 32 (calendar days until the 1/16/26 option series expires)
+ # Weekly:
+ #   - P = current spot price
+ #   - V = IV for the option series that expires on 12/22/25 (weekly option series for the following Monday)
+ #   - E = 7 (calendar days until the 12/22/25 option series expires)
+ # Daily:
+ #   - P = current spot price
+ #   - V = IV for the option series that expires on 12/16/25 (weekly 1-day option for the next day)
+ #   - E = 1 (calendar days until the 12/16/25 option series expires)
+ # Intraday:
+ #   - P = open price from current morning, 12/15/25
+ #   - V = IV for the option series that expires on 12/15/25 (weekly 0-day option series for today)
+ #   - E = 0.21 (5hrs left in day / 24hrs hours in day)
+ # Historical volatility:
+ #   - Use trading days (252) and trading hours (6.5)
+###
+
 declare upper;
 
 #include_once "../lib/Date.think"

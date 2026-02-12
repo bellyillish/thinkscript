@@ -1,8 +1,32 @@
 ###
-# Volatility
-#   - data
-#   - window
-#   - annualize
+ # Realized Volatility
+ # Backward-looking estimate of how much the market has been moving.
+ #   - trend signals often work best in moderate volatility
+ #   - mean reversion can work better when RV is elevated but not chaotic
+ #
+ # Inputs:
+ #   - data      = use log returns
+ #   - window    = for stdev
+ #   - annualize = for vol calculation
+ #     - Daily bars  = 252
+ #     - Weekly bars = 52
+ #     - Intraday    = barsPerDay * 252
+ #
+ # Interpretation:
+ #   - rv
+ #     - Very low  = < ~10-11%
+ #     - Low vol   = < ~12%
+ #     - Normal    =   ~12%-22%
+ #     - High      = > ~22-25%
+ #     - Very high = > ~30%
+ #   - ZScore(rv)
+ #     - Low  = < -1
+ #     - High = > +1
+ #     - Extremes = ±1.5 (or ±2 for rare extremes)
+ #   - Percentile(rv)
+ #     - Low      = < 20
+ #     - High     = > 80
+ #     - Extremes = < 10 and > 90
 ###
 
 script Volatility {

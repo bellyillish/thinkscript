@@ -148,6 +148,8 @@ async function buildOnce(config) {
     const relEntry = path.relative(entryDirAbs, entryAbs);
     const outAbs = path.join(distDirAbs, relEntry);
 
+    console.log(`[build] ${normalizeSlashes(path.relative(projectRoot, outAbs))}`);
+
     let expanded = await expandIncludes({
       filePath: entryAbs,
       projectRoot,
@@ -164,9 +166,11 @@ async function buildOnce(config) {
     }
 
     if (config.minify) {
-      expanded = expanded.replaceAll(/#.*/g, "").replaceAll(/(\r|\n|\s){1,}/g, " ");
-    }
-    else {
+      // comments
+      expanded = expanded.replaceAll(/#(?=(?:[^"]*"[^"]*")*[^"]*$).*$/gm, "");
+      // trailing spaces
+      expanded = expanded.replaceAll(/[ \t]+$/gm, "");
+      // extra newlines
       expanded = expanded.replaceAll(/(\r|\n){3,}/g, "\n\n");
     }
 
@@ -181,7 +185,6 @@ async function buildOnce(config) {
     await fs.writeFile(outAbs, banner + expanded, "utf8");
 
     builtCount++;
-    console.log(`[build] ${normalizeSlashes(path.relative(projectRoot, outAbs))}`);
   }
 
   console.log(`[build] Done. Built ${builtCount} file(s).`);

@@ -1,0 +1,57 @@
+###
+ # Mean Reversion Half Life
+ # "How many bars does it take for a deviation from the mean to decay by ~50%?"
+ #   - Short half-life = tight, responsive, range-bound
+ #   - Long half-life  = slow drift, trend-like behavior
+ #
+ # Inputs:
+ #   - data       = usually Log(close)
+ #   - meanWindow = for rolling mean
+ #   - window     = for variance/covariance
+ #
+ # Interpretation:
+ #   - hl < 5   = very fast reversion (scalp ranges)
+ #   - hl 5–20  = tradeable mean reversion
+ #   - hl 20–50 = slow drift/hybrid
+ #   - hl > 50  = trend/random walk
+###
+
+script HalfLife {
+    input data       = 0;
+    input meanWindow = 50;
+    input window     = 50;
+    input epsilon    = 0.001;
+
+    def mean = Average(data, meanWindow);
+    def dist = data - mean;
+    def lag  = GetValue(dist, 1);
+
+    def cov;
+    def var;
+    if IsNaN(dist) or IsNaN(lag) {
+        cov = Double.NaN;
+        var = Double.NaN;
+    }
+    else {
+        cov = Covariance(lag, dist, window);
+        var = Covariance(lag, lag,  window);
+    }
+
+    def phi;
+    if var > 0 {
+        phi = Min(1 - epsilon, Max(epsilon, cov / var));
+    }
+    else {
+        phi = Double.NaN;
+    }
+
+    def hl;
+    if phi > 0 and phi < 1 {
+        hl = -Log(2) / Log(phi);
+    }
+    else {
+        hl = Double.NaN;
+    }
+
+    plot P = hl;
+}

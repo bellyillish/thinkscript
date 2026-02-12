@@ -1,9 +1,65 @@
+###
+ # Put/Call Ratio
+ # Most useful:
+ #   - when values are at extremes
+ #   - when it diverges with price
+ #   - as a z-scored rate of change (more responsive)
+ #   - when relativized to its own baseline
+ #     - rolling mean/median
+ #     - rolling z-score
+ #     - percentile rank (e.g. 252 bars)
+ #
+ # Index vs. Equity
+ #   - Index Options ($CPCI)
+ #     - Dominated by institutions
+ #     - Systemic fear
+ #     - Macro hedging pressure
+ #     - Volatility regime transitions
+ #   - Equity Options ($CPCE)
+ #     - Heavier retail participation
+ #     - Better as a contrarian sentiment gauge.
+ #
+ # Interpretation:
+ #   - high                                = fear and hedging
+ #   - high, price stable, vol peaking     = contrarian bullish
+ #   - high, price breaking, vol expanding = trend-confirming bullish
+ #   - low, price higher, breadth/vol weak = bearish divergence
+ # Z-Scored:
+ #   - high z(pcr)                       = mean reversion setups
+ #   - low z(pcr), low vol, strong trend = breakout longs setup (risk on)
+###
+
+###
+ # TODOs:
+ # Keep:
+ #   - Log Ratio (log(puts/calls))
+ #   - Z-score of Log Ratio (rolling)
+ #   - Divergence / regime usage
+ #   - Anchored cumulative (not infinite cumulative)
+ #   - Simple smoothing, but only one kind (pick one)
+ #
+ # Discard/change:
+ #  - Neutral adjustment (relativize it)
+ #  - Percentage display
+ #  - Pick either oscillation or inertia, and consider smoothing the z-score instead
+ #  - Optional: z roc (z - z[rocLen])
+ #  - z with ±1/2/3 bands
+ #  - divergence markers vs price
+ #
+ # Advanced Approach:
+ # - is institutional hedging rising relative to retail speculation, or vice versa?
+ #   1. log($CPCI)
+ #   2. log($CPCE)
+ #   3. spread = log($CPCI) - log($CPCE)
+ #   4. Z-score the spread
+###
+
 declare lower;
 
 #include_once "../lib/Chart.think"
 #include_once "../lib/Sanitizer.think"
 #include_once "../lib/Oscillate.think"
-#include_once "../lib/Periods.think"
+#include_once "../lib/Period.think"
 #include_once "../lib/ZScore.think"
 
 ### INPUTS ###
@@ -42,7 +98,7 @@ declare lower;
         "Z-Sum"
     };
 
-    input Period = {
+    input Anchor = {
         default "Chart",
         "Daily",
         "Weekly",
@@ -150,8 +206,8 @@ declare lower;
 ###
 
 ### CALCULATIONS ###
-    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNewAndValid;
-    def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
+    def isNewPeriod    = Period(Anchor, SinceDate, CandlesAgo).isNewAndValid;
+    def isActivePeriod = Period(Anchor, SinceDate, CandlesAgo).isActive;
 
     # Data Fixes
     def all;

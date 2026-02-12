@@ -1,7 +1,21 @@
 ###
-# ZScore
-#   - data
-#   - window
+ # ZScore
+ # How many stdevs the current bar is from the recent mean (how extreme the current move is).
+ #   - Directional
+ #   - Assumes normal distribution (no skew and low kurtosis)
+ # Combined with kurtosis:
+ #   - z-scores = where you are in the distribution
+ #   - kurtosis = how dangerous that location is
+ #
+ # Inputs:
+ #   - data
+ #   - window = for mean/stdev
+ #
+ # Interpretation:
+ #   - high z, high k     = normal (trend continuation)
+ #   - rising z, rising k = building instability
+ #   - low z, high k      = compression before shock
+ #   - high z, low k      = rare jump (fade)
 ###
 
 script ZScore {

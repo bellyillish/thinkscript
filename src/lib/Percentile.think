@@ -1,7 +1,8 @@
 ###
 # Percentile
+# Percentile rank of a value against its own history.
 #   - data
-#   - window
+#   - window = percentile window
 ###
 
 script Percentile {
@@ -9,19 +10,25 @@ script Percentile {
     input window = 252;
 
     def sumLess = fold i1 = 1 to window + 1 with s1 = 0
-        do s1 + (if data > GetValue(data, i1) then 1 else 0);
+        do s1 + (if !IsNaN(data) and data > GetValue(data, i1) then 1 else 0);
 
     def sumSame = fold i2 = 1 to window + 1 with s2 = 0
-        do s2 + (if data == GetValue(data, i2) then 0.5 else 0);
+        do s2 + (if !IsNaN(data) and data == GetValue(data, i2) then 0.5 else 0);
 
     def sumAll = fold i3 = 1 to window + 1 with s3 = 0
-        do s3 + (if !IsNaN(data) then 1 else 0);
+        do s3 + (if !IsNaN(data) and !IsNaN(GetValue(data, i3)) then 1 else 0);
 
-    plot percentile;
+    def percentile;
     if sumAll > 0 {
         percentile = (sumLess + sumSame) / sumAll;
     }
     else {
         percentile = Double.NaN;
     }
+
+    # force prefetch hack
+    def __data     = data;
+    def __prefetch = if yes then 1 else __data[window];
+
+    plot P = percentile * __prefetch;
 }

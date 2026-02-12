@@ -1,0 +1,47 @@
+###
+ # MA Slope
+ # Slow structural trend filter.
+ #   - Percentile(slope) = for gating (e.g. trending vs not trending)
+ #   - ZScore(slope)     = to measure strength and acceleration.
+ #
+ #   Inputs:
+ #     - data        = usually Log(price)
+ #     - avgWindow   = MA rolling window
+ #     - slopeWindow = slope rolling window
+ #     - normalize   = no unless passing raw prices
+ #
+ #   Interpretation:
+ #     - slope > 0 and distance > 0 = bullish continuation
+ #     - slope > 0 and distance < 0 = pullback in uptrend
+ #     - slope < 0 and distance < 0 = bearish continuation
+ #     - slope < 0 and distance > 0 = rally in downtrend
+ #     - ZScore(perBar) ~  0        = normal trend speed
+ #     - ZScore(perBar) >  1        = unusually strong uptrend
+ #     - ZScore(perBar) < -1        = unusually strong downtrend
+###
+
+###
+ # TODOs:
+ #   - optional smoothing (EMA of slope) to reduce jitter
+ #   - Minimum bars guard / NaN guard
+ #   - winsorize before z-scoring (not really needed for percentiles)
+###
+
+script MASlope {
+    input data        = 0;
+    input avgWindow   = 50;
+    input slopeWindow = 10;
+    input normalize   = no;
+
+    def avg = Average(data, avgWindow);
+
+    def normalizer = if normalize
+        then AbsValue(avg)
+        else 1;
+
+    def slope    = (avg - GetValue(avg, slopeWindow)) / normalizer;
+    def distance = (data - avg) / normalizer;
+    def perBar   = slope / slopeWindow;
+
+    plot P = slope;
+}

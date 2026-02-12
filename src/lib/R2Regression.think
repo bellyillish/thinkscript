@@ -1,0 +1,74 @@
+###
+ # R² of Regression
+ # Percent of (non-directional) variance explained by the trend
+ #   - "How much movement is explained by a straight-line trend vs noise?"
+ #   - "Is trend-based logic appropriate right now?"
+ #   - ZScore(r2)     = for regime change, detects unusual trend-like behavior
+ #   - Percentile(r2) = very robust, intuitive (better in many cases)
+ #
+ # Pairs well with:
+ #   - MA slope
+ #   - Regression slope
+ #   - Breakout distance
+ #
+ # Inputs:
+ #   - data = Log(price), ratios, spreads, etc.
+ #   - window
+ #   - smoothing
+ #
+ # Interpretation:
+ #   - R² < 0.30            = No-trend regime
+ #   - R² 0.30–0.55         = Transitional / fragile trend
+ #   - R² > 0.55            = Valid trend regime
+ #   - High slope + low R²  = fake trend / chop drift
+ #   - Low slope  + high R² = slow, orderly grind
+ #   - High slope + high R² = trend heaven
+ #   - Low R² everywhere    = range / mean reversion regime
+###
+
+###
+ # TODOs:
+ #   - clamping
+###
+
+script R2Regression {
+    input data      = 0;
+    input window    = 50;
+    input smoothing = 0;
+
+    def sumX  = window * (window - 1) / 2;
+    def sumX2 = window * (window - 1) * (window * 2 - 1) / 6;
+
+    def sumY = fold iy = 0 to window with sy = 0
+        do sy + GetValue(data, iy);
+
+    def sumXY = fold ixy = 0 to window with sxy = 0
+        do sxy + ixy * GetValue(data, ixy);
+
+    def denominator = window * sumX2 - sumX * sumX;
+
+    def slope = if denominator != 0
+        then (window * sumXY - sumX * sumY) / denominator
+        else 0;
+
+    def meanY     = sumY / window;
+    def meanX     = (window - 1) / 2;
+    def intercept = meanY - slope * meanX;
+
+    def ssTot = fold it = 0 to window with st = 0
+        do st + Sqr(GetValue(data, it) - meanY);
+
+    def ssRes = fold ir = 0 to window with sr = 0
+        do sr + Sqr(GetValue(data, ir) - (intercept + slope * ir));
+
+    plot r2;
+    if ssTot == 0 {
+        r2 = 0;
+    }
+    else if smoothing > 1 {
+        r2 = Average(1 - ssRes / ssTot, smoothing);
+    }
+    else {
+        r2 = 1 - ssRes / ssTot;
+    }
+}

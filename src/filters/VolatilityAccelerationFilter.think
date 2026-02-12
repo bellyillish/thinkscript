@@ -1,0 +1,31 @@
+###
+ # Volatility Acceleration Filter
+###
+
+#include_once "../lib/VolatilityAcceleration.think"
+#include_once "../lib/Percentile.think"
+#include_once "../lib/ZScore.think"
+
+script VolatilityAccelerationFilter {
+    input data = 0;
+
+    def roc  = VolatilityAcceleration(data);
+    def proc = Percentile(roc);
+    def zroc = ZScore(roc);
+
+    def zRegimeType =
+        if      zroc >  1.25 then  2
+        else if zroc < -1.25 then -2
+        else if zroc >  0.75 then  1
+        else if zroc < -0.75 then -1
+        else 0;
+
+    def pRegimeType =
+        if      proc > 0.9 then  2
+        else if proc < 0.1 then -2
+        else if proc > 0.8 then  1
+        else if proc < 0.2 then -1
+        else 0;
+
+    plot P = Double.NaN;
+}

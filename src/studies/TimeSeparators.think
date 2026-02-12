@@ -1,9 +1,9 @@
 declare upper;
 
-#include_once "../lib/Periods.think"
+#include_once "../lib/Period.think"
 
 ### INPUTS ###
-    input Period = {
+    input Anchor = {
         "Daily",
         "Weekly",
         default "Monthly",
@@ -21,8 +21,8 @@ declare upper;
 ###
 
 ### CALCULATIONS ###
-    def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
-    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNewAndValid;
+    def isActivePeriod = Period(Anchor, SinceDate, CandlesAgo).isActive;
+    def isNewPeriod    = Period(Anchor, SinceDate, CandlesAgo).isNewAndValid;
 ###
 
 ### PLOTS ###

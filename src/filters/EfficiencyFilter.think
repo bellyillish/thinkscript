@@ -1,0 +1,49 @@
+###
+ # Efficiency Ratio Filter
+###
+
+#include_once "../lib/Efficiency.think"
+#include_once "../lib/Percentile.think"
+#include_once "../lib/ZScore.think"
+
+script EfficiencyFilter {
+    input data = 0;
+
+    def ratio  = Efficiency(data);
+    def pratio = Percentile(ratio);
+    def zratio = ZScore(ratio);
+
+    def zTrendType =
+        if      zratio >  0.75 then 1
+        else if zratio < -0.75 then -1
+        else 0;
+
+    def pTrendType =
+        if      pratio > 0.7 then 1
+        else if pratio < 0.3 then -1
+        else 0;
+
+    plot P = Double.NaN;
+}
+
+###
+ # Efficiency Ratio Signal
+###
+
+script EfficiencySignal {
+    input data     = 0;
+    input debounce = 2;
+
+    def ratio = Efficiency(data);
+
+    def trendType =
+        if      ratio > 0.40 then 2
+        else if ratio < 0.22 then -2
+        else if ratio > 0.32 and GetValue(trendType, 1) > 0 then  1
+        else if ratio < 0.27 and GetValue(trendType, 1) < 0 then -1
+        else 0;
+
+    def confirmed = AbsValue(Sum(trendType, debounce)) == 2 * debounce;
+
+    plot P = trendType;
+}

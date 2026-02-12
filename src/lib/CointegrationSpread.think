@@ -1,0 +1,39 @@
+###
+ # Cointegration Spread
+ # Rolling hedge ratio (beta) and cointegration spread
+ # - trade the spread z-score (not raw prices)
+ #
+ # Inputs:
+ # - dataOne = use log price
+ # - dataTwo = use log price
+ # - window  = for spread calculation
+ #   - shorter (< 1 year) for "rolling" window
+ #   - longer (1-3 years) for "fixed" window
+ #   - exploding |fixed - rolling| = relationship is changing
+ #
+ # Interpretation:
+ # - entry = |z| > 2
+ # - exit  = z ~ 0
+###
+
+script CointegrationSpread {
+    input dataOne   = 0;
+    input dataTwo   = 0;
+    input window    = 120;
+
+    def meanOne = Average(dataOne, window);
+    def meanTwo = Average(dataTwo, window);
+
+    def cov = Average((dataOne - meanOne) * (dataTwo - meanTwo), window);
+    def var = Average(Sqr(dataOne - meanOne), window);
+
+    def beta;
+    if var == 0 {
+        beta = Double.NaN;
+    }
+    else {
+        beta = cov / var;
+    }
+
+    plot spread = dataTwo - beta * dataOne;
+}

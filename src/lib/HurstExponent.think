@@ -1,0 +1,43 @@
+###
+ # Hurt Exponent
+ # A measure of long-memory / persistence in a time series.
+ #   - "Does this market remember where it was going?""
+ #
+ # Input:
+ #   - data      = use log returns
+ #   - windowOne = short window length
+ #   - windowTwo = long window length
+ #
+ # Interpretation:
+ #   - conceptually:
+ #     - ≈ 0.5 = random walk, noise, no exploitable structure
+ #     - < 0.5 = anti-persistent, mean-reverting, choppy
+ #     - > 0.5 = persistent, trending, directional
+ #   - zhurst:
+ #     - >  1.25 = strong persistence
+ #     - >  0.75 = trend-friendly
+ #     - < −0.75 = mean-reversion dominant
+ #   - phurst:
+ #     - > 0.85 = strong trend regime#
+ #     - > 0.7  = persistent
+ #     - < 0.3  = anti-persistent
+###
+
+script HurstExponent {
+    input data      = 0;
+    input windowOne = 10;
+    input windowTwo = 40;
+
+    def sumOne = Sum(data, windowOne);
+    def sumTwo = Sum(data, windowTwo);
+    def devOne = StDev(sumOne, windowOne);
+    def devTwo = StDev(sumTwo, windowTwo);
+
+    plot hurst;
+    if devOne > 0 and devTwo > 0 {
+        hurst = (Log(devTwo) - Log(devOne)) / (Log(windowTwo) - Log(windowOne));
+    }
+    else {
+        hurst = Double.NaN;
+    }
+}

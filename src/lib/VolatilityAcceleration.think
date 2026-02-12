@@ -1,0 +1,37 @@
+###
+ # Volatility Acceleration (rate of change)
+ # Is volatility rising or falling quickly?
+ #   - rising = breakouts fail, gaps widen, correlations rise, trend signals get noisier
+ #   - falling = mean reversion improves, breakout follow-through can improve, spreads/tails shrink
+ #   - steady = your usual assumptions are least violated
+ #
+ # Inputs:
+ #   - data    = use log returns
+ #   - window  = for stdev
+ #   - horizon = for roc
+ #
+ # Interpretation:
+ #   - z(roc):
+ #     - Extreme heating = >= +1.25
+ #     - Heating         = >= +0.75
+ #     - Cooling         = <= -0.75
+ #     - Extreme cooling = <= -1.25
+ #   - p(roc):
+ #     - Extreme heating = >= 0.9
+ #     - Heating         = >= 0.8
+ #     - Cooling         = <= 0.2
+ #     - Extreme cooling = <= 0.1
+###
+
+#include_once "../lib/Volatility.think"
+
+script VolatilityAcceleration {
+    input data    = 0;
+    input window  = 20;
+    input horizon = 5;
+
+    def rv   = Volatility(data, window);
+    def lag  = GetValue(rv, horizon);
+
+    plot roc  = (rv - lag)  / rv;
+}

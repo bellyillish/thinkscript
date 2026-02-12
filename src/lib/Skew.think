@@ -1,8 +1,40 @@
 ###
-# Skew
-#   - data
-#   - debias
-#   - window
+ # Skew
+ # Detects directional asymmetry (left vs right tail imbalance).
+ # - Are extreme moves biased to one side?
+ #   - positive = upside more common
+ #   - negative = downside more common
+ # not about direction but risk geometry:
+ #   - if moves are tail-driven vs symmetric
+ #   - if the market is crash-prone, melt-up-prone, or balanced
+ #   - if volatility is being expressed gradually or via jumps
+ # Negative skew often precedes realized volatility spikes, making it a leading risk-regime filter.
+ #
+ # Inputs:
+ #   - data   = use log returns
+ #   - debias
+ #   - window = rolling window length
+ #
+ # Interpretation:
+ #   - < 0 = downside risk, mean reversion is dangerous
+ #   - > 0 = upside risk, breakouts more likely, may preecede volatility
+ #   - With Kurtosis:
+ #     - (equities tend to show negative skew and high kurtosis)
+ #     - s ~= 0, low k  = mean reverting, range-bound
+ #     - s ~= 0, high k = volatile chop, whipsaws
+ #     - s <  0, low k  = grinding downtrends
+ #     - s <  0, high k = fragile, crash prone
+ #     - s >  0, high k = melt-ups, squeezes
+ #   - zskew:
+ #     - >  1.0 = upside tail, squeeze regime
+ #     - >  0.5 = elevated upside tail regime
+ #     - > -1.0 = elevated downside tail regime
+ #     - < -2.0 = crash risk/stress regime
+ #   - pskew:
+ #     - > 0.9 = extreme positive skew
+ #     - > 0.7 = elevated positive skew
+ #     - < 0.3 = elevated negative skew
+ #     - < 0.1 = extreme negative skew
 ###
 
 script Skew {

@@ -1,0 +1,66 @@
+###
+ # Sector Dispersion Filter
+###
+
+#include_once "../lib/ZScore.think"
+#include_once "../lib/Percentile.think"
+#include_once "../lib/Sanitizer.think"
+
+script SectorDispersionFilter {
+    input corrWindow = 60;
+    input devWindow  = 60;
+
+    def value00 = Log(close("$SP500"));
+    def value10 = Log(close("$SP500#10"));
+    def value15 = Log(close("$SP500#15"));
+    def value20 = Log(close("$SP500#20"));
+    def value25 = Log(close("$SP500#25"));
+    def value30 = Log(close("$SP500#30"));
+    def value35 = Log(close("$SP500#35"));
+    def value40 = Log(close("$SP500#40"));
+    def value45 = Log(close("$SP500#45"));
+    def value50 = Log(close("$SP500#50"));
+    def value55 = Log(close("$SP500#55"));
+    def value60 = Log(close("$SP500#60"));
+
+    def change00 = value00 - value00[1];
+    def change10 = value10 - value10[1];
+    def change15 = value15 - value15[1];
+    def change20 = value20 - value20[1];
+    def change25 = value25 - value25[1];
+    def change30 = value30 - value30[1];
+    def change35 = value35 - value35[1];
+    def change40 = value40 - value40[1];
+    def change45 = value45 - value45[1];
+    def change50 = value50 - value50[1];
+    def change55 = value55 - value55[1];
+    def change60 = value60 - value60[1];
+
+    def corr10 = Correlation(change10, change00, corrWindow);
+    def corr15 = Correlation(change15, change00, corrWindow);
+    def corr20 = Correlation(change20, change00, corrWindow);
+    def corr25 = Correlation(change25, change00, corrWindow);
+    def corr30 = Correlation(change30, change00, corrWindow);
+    def corr35 = Correlation(change35, change00, corrWindow);
+    def corr40 = Correlation(change40, change00, corrWindow);
+    def corr45 = Correlation(change45, change00, corrWindow);
+    def corr50 = Correlation(change50, change00, corrWindow);
+    def corr55 = Correlation(change55, change00, corrWindow);
+    def corr60 = Correlation(change60, change00, corrWindow);
+
+    def corrAvg  = (corr10 + corr15 + corr20 + corr25 + corr30 + corr35 + corr40 + corr45 + corr50 + corr55 + corr60) / 11;
+    def pcorrAvg = Percentile(corrAvg);
+    def zcorrAvg = ZScore(corrAvg);
+
+    def zCorrType =
+        if      zcorrAvg >  0.5 then  1
+        else if zcorrAvg < -0.5 then -1
+        else 0;
+
+    def pCorrType =
+        if      pcorrAvg > 0.7 then  1
+        else if pcorrAvg < 0.3 then -1
+        else 0;
+
+    plot P = Double.NaN;
+}

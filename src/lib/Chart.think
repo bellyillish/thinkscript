@@ -1,3 +1,7 @@
+###
+ # Chart utility script
+###
+
 script Chart {
     def today  = GetYYYYMMDD();
     def number = BarNumber();
@@ -14,7 +18,7 @@ script Chart {
     def isMultiDay = GetAggregationPeriod() >  AggregationPeriod.DAY;
 
     # Bar checks
-    def isValidBar = number between startBar and endBar;
+    def isValidBar = number <= endBar;
     def isStart    = number == startBar;
     def isEnd      = number == endBar;
 

@@ -1,0 +1,51 @@
+###
+ # MA Slope Filter
+###
+
+#include_once "../lib/MASlope.think"
+#include_once "../lib/Percentile.think"
+#include_once "../lib/ZScore.think"
+
+script MASlopeFilter {
+    input data = 0;
+
+    def perBar  = MASlope(data).perBar;
+    def pPerBar = Percentile(perBar);
+    def zPerBar = ZScore(perBar);
+
+    def zTrendType =
+        if      zPerBar >  1.0 then  2
+        else if zPerBar < -1.0 then -2
+        else if zPerBar >  0.5 and GetValue(zTrendType, 1) > 0 then  1
+        else if zPerBar < -0.5 and GetValue(zTrendType, 1) < 0 then -1
+        else 0;
+
+    def pTrendType =
+        if      pPerBar >  0.9 then  2
+        else if pPerBar < -0.9 then -2
+        else if pPerBar >  0.3 and GetValue(pTrendType, 1) > 0 then  1
+        else if pPerBar < -0.3 and GetValue(pTrendType, 1) < 0 then -1
+        else 0;
+
+    plot P = Double.NaN;
+}
+
+###
+ # MA Slope Signal
+###
+
+script MASlopeSignal {
+    input data = 0;
+
+    def perBar    = MASlope(data).perBar;
+    def distance  = MASlope(data).distance;
+    def trendType = MASlopeFilter(data).pTrendType;
+
+    def isSignalUp = perBar crosses above 0 and distance > 0;
+    def isSignalDn = perBar crosses below 0 and distance < 0;
+
+    def isPullbackUp = trendType > 0 AND distance crosses above 0;
+    def isPullbackDn = trendType < 0 AND distance crosses below 0;
+
+    plot P = Double.NaN;
+}

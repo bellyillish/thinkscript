@@ -1,0 +1,32 @@
+###
+ # Cross-Asset Correlation Filter
+###
+
+#include_once "../lib/ZScore.think"
+#include_once "../lib/Percentile.think"
+#include_once "../lib/Sanitizer.think"
+
+script CrossCorrelationFilter {
+    input indicator = {
+        default "COR1M",
+        "COR3M",
+        "COR6M",
+        "COR1Y"
+    };
+
+    def corr  = Sanitizer(close(indicator));
+    def pcorr = Percentile(corr);
+    def zcorr = ZScore(corr);
+
+    def zCorrType =
+        if      zcorr > 1.0 then 2
+        else if zcorr > 0.5 then 1
+        else 0;
+
+    def pCorrType =
+        if      pcorr > 0.8 then 2
+        else if pcorr > 0.6 then 1
+        else 0;
+
+    plot P = Double.NaN;
+}

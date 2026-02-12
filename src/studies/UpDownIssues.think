@@ -3,7 +3,7 @@ declare lower;
 #include_once "../lib/Chart.think"
 #include_once "../lib/Sanitizer.think"
 #include_once "../lib/Oscillate.think"
-#include_once "../lib/Periods.think"
+#include_once "../lib/Period.think"
 #include_once "../lib/ZScore.think"
 
 ### INPUTS ###
@@ -37,7 +37,7 @@ declare lower;
         "Z-Sum"
     };
 
-    input Period = {
+    input Anchor = {
         default "Chart",
         "Daily",
         "Weekly",
@@ -122,8 +122,8 @@ declare lower;
 ###
 
 ### CALCULATIONS ###
-    def isActivePeriod = Periods(Period, SinceDate, CandlesAgo).isActive;
-    def isNewPeriod    = Periods(Period, SinceDate, CandlesAgo).isNewAndValid;
+    def isActivePeriod = Period(Anchor, SinceDate, CandlesAgo).isActive;
+    def isNewPeriod    = Period(Anchor, SinceDate, CandlesAgo).isNewAndValid;
 
     # Tick
     def tickUp;

@@ -1,0 +1,72 @@
+###
+ # Cointegration
+ # ADF-style test on the spread for stationarity
+ # Theory:
+ # - the pair is cointegrated if spread is stationary
+ # - spread mean-reverts if ρ is significantly negative
+ #
+ # Inputs:
+ # - dataOne   = use log price
+ # - dataTwo   = use log price
+ # - window    = for spread calculation
+ # - adfWindow = for tstat calculation
+ #
+ # Interpretation:
+ # - good   = < -3.0
+ # - ok     = -3.0 to -2.5
+ # - weak   = > -2.5
+ # - rising = stationarity degrading
+ # - stop trading the pair if tstat rises above -2.0
+ #
+ # Outputs:
+ # - raw tstat         = normal usage
+ # - z-score(tstat)    = "how strong is the relationship relative to its own history?"
+ # - percentile(tstat) = safer/cleaner than z-score
+ #   - < 0.1 percentile = historically very stationary
+ #   - > 0.8 percentile = relationship unusually weak
+###
+
+script Cointegration {
+    input dataOne   = 0;
+    input dataTwo   = 0;
+    input window    = 120;
+    input adfWindow = 120;
+
+    def spread = CointegrationSpread(dataOne, dataTwo, window);
+    def delta  = spread - spread[1];
+    def lag    = spread[1];
+
+    def lmean = Average(lag,   adfWindow);
+    def dmean = Average(delta, adfWindow);
+
+    def cov = Average((lag - lmean) * (delta - dmean), adfWindow);
+    def var = Average(Sqr(lag - lmean), adfWindow);
+
+    def rho;
+    if var == 0 {
+        rho = Double.NaN;
+    }
+    else {
+        rho = cov / var;
+    }
+
+    def ldspread = dmean - rho * lmean;
+    def err      = delta - (ldspread + rho * lag);
+    def emean    = Average(Sqr(err), adfWindow);
+
+    def erho;
+    if var == 0 {
+        erho = Double.NaN;
+    }
+    else {
+        erho = Sqrt(emean / ((adfWindow - 2) * var));
+    }
+
+    plot tstat;
+    if erho == 0 {
+        tstat = Double.NaN;
+    }
+    else {
+        tstat = rho / erho;
+    }
+}

@@ -1,0 +1,29 @@
+###
+ # Hurt Exponent Filter
+###
+
+#include_once "../lib/HurstExponent.think"
+#include_once "../lib/Percentile.think"
+#include_once "../lib/ZScore.think"
+
+script HurstExponentFilter {
+    input data = 0;
+
+    def hurst  = HurstExponent(data);
+    def phurst = Percentile(hurst);
+    def zhurst = ZScore(hurst);
+
+    def zRegimeType =
+        if      zhurst >  1.25 then  2
+        else if zhurst >  0.75 then  1
+        else if zhurst < -0.75 then -1
+        else 0;
+
+    def pRegimeType =
+        if      phurst > 0.85 then  2
+        else if phurst > 0.7  then  1
+        else if phurst < 0.3  then -1
+        else 0;
+
+    plot P = Double.NaN;
+}

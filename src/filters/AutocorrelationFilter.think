@@ -1,0 +1,45 @@
+###
+ # Autocorrelation Filter
+ #
+ # Interpretation:
+ #   - zcorr:
+ #     - >  1.5 = Strong trend regime
+ #     - >  1.0 = Persistent / trend-biased
+ #     - < −1.0 = Mean-reversion regime
+ #     - < −1.5 = Strong reversion regime
+ #   - pcorr:
+ #     - > 0.8 = Trend-biased
+ #     - > 0.6 = Mild persistence
+ #     - < 0.4 = Mild reversion
+ #     - < 0.2 = Strong reversion
+###
+
+#include_once "../lib/Autocorrelate.think"
+#include_once "../lib/Percentile.think"
+#include_once "../lib/ZScore.think"
+
+script AutocorrelateFilter {
+    input data   = 0;
+    input offset = 1;
+    input window = 60;
+
+    def corr  = Autocorrelate(data, offset, window);
+    def pcorr = Percentile(corr);
+    def zcorr = ZScore(corr);
+
+    def zRegimeType =
+        if      zcorr >  1.5 then  2
+        else if zcorr >  1.0 then  1
+        else if zcorr < -1.5 then -2
+        else if zcorr < -1.0 then -1
+        else 0;
+
+    def pRegimeType =
+        if      pcorr > 0.8 then  2
+        else if pcorr > 0.6 then  1
+        else if pcorr < 0.2 then -2
+        else if pcorr < 0.4 then -1
+        else 0;
+
+    plot P = Double.NaN;
+}

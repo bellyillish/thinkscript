@@ -1,0 +1,35 @@
+###
+ # VIX Term Structure Filter
+###
+
+#include_once "../lib/ZScore.think"
+#include_once "../lib/Percentile.think"
+
+script VIXTermStructureFilter {
+    def vix1 = Log(close("VIX1D") / close("VIX9D"));
+    def vix2 = Log(close("VIX9D") / close("VIX"));
+    def vix3 = Log(close("VIX")   / close("VIX3M"));
+    def vix4 = Log(close("VIX3M") / close("VIX6M"));
+
+    def zvix1 = ZScore(vix1, 250);
+    def zvix2 = ZScore(vix2, 250);
+    def zvix3 = ZScore(vix3, 250);
+    def zvix4 = ZScore(vix4, 250);
+
+    def pvix1 = Percentile(vix1, 500);
+    def pvix2 = Percentile(vix2, 500);
+    def pvix3 = Percentile(vix3, 500);
+    def pvix4 = Percentile(vix4, 500);
+
+    def zRegimeType1 = if zvix1 > 1.0 then 1 else if zvix1 < -0.5 then -1 else 0;
+    def zRegimeType2 = if zvix2 > 1.0 then 1 else if zvix2 < -0.5 then -1 else 0;
+    def zRegimeType3 = if zvix3 > 1.0 then 1 else if zvix3 < -0.5 then -1 else 0;
+    def zRegimeType4 = if zvix4 > 1.0 then 1 else if zvix4 < -0.5 then -1 else 0;
+
+    def pRegimeType1 = if pvix1 > 0.8 then 1 else if pvix1 < 0.3 then -1 else 0;
+    def pRegimeType2 = if pvix2 > 0.8 then 1 else if pvix2 < 0.3 then -1 else 0;
+    def pRegimeType3 = if pvix3 > 0.8 then 1 else if pvix3 < 0.3 then -1 else 0;
+    def pRegimeType4 = if pvix4 > 0.8 then 1 else if pvix4 < 0.3 then -1 else 0;
+
+    plot P = Double.NaN;
+}

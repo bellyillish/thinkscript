@@ -1,0 +1,30 @@
+###
+ # IV vs. HV Spread Filter
+###
+
+#include_once "../lib/ZScore.think"
+#include_once "../lib/Percentile.think"
+#include_once "../lib/Volatility.think"
+
+script IVHVSpreadFilter {
+    def iv = imp_volatility;
+    def hv = Volatility(Log(close / close[1]));
+
+    def spread  = Log(iv / hv);
+    def zspread = ZScore(spread, 250);
+    def pspread = Percentile(spread, 500);
+
+    def zRegimeType =
+        if      zspread > 1.0  then  2
+        else if zspread > 0.5  then  1
+        else if zspread < -0.5 then -1
+        else 0;
+
+    def pRegimeType =
+        if      pspread > 0.85 then  2
+        else if pspread > 0.70 then  1
+        else if pspread < 0.30 then -1
+        else 0;
+
+    plot P = Double.NaN;
+}

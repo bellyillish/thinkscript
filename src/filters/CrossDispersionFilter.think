@@ -1,0 +1,25 @@
+###
+ # Cross-Asset Dispersion Filter
+###
+
+#include_once "../lib/ZScore.think"
+#include_once "../lib/Percentile.think"
+#include_once "../lib/Sanitizer.think"
+
+script CrossDispersionFilter {
+    def dspx  = Sanitizer(close("DSPX"));
+    def pdspx = Percentile(dspx);
+    def zdspx = ZScore(dspx);
+
+    def zDspxType =
+        if      zdspx >  0.5 then  1
+        else if zdspx < -0.5 then -1
+        else 0;
+
+    def pDspxType =
+        if      pdspx > 0.7 then  1
+        else if pdspx < 0.3 then -1
+        else 0;
+
+    plot P = Double.NaN;
+}

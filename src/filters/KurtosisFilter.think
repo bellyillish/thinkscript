@@ -1,0 +1,29 @@
+###
+ # Kurtosis Filter
+###
+
+#include_once "../lib/Kurtosis.think"
+#include_once "../lib/Percentile.think"
+#include_once "../lib/ZScore.think"
+
+script KurtosisFilter {
+    input data = 0;
+
+    def k  = Kurtosis(data);
+    def pk = Percentile(k);
+    def zk = ZScore(k);
+
+    def zRegimeType =
+        if      zk >  2 then  2
+        else if zk >  1 then  1
+        else if zk < -1 then -1
+        else 0;
+
+    def pRegimeType =
+        if      pk > 0.9 then  2
+        else if pk > 0.8 then  1
+        else if pk < 0.2 then -1
+        else 0;
+
+    plot P = Double.NaN;
+}

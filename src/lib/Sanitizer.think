@@ -8,14 +8,12 @@
 script Sanitizer {
     input data = 0;
 
-    def isValidBar = Chart().isValidBar;
-
     def sanitized;
-    if !isValidBar or !IsNaN(data) and !IsInfinite(data) {
-        sanitized = data;
+    if Chart().isValidBar and (IsNaN(data) or IsInfinite(data)) {
+        sanitized = GetValue(sanitized, 1);
     }
     else {
-        sanitized = CompoundValue(1, sanitized[1], data);
+        sanitized = data;
     }
 
     plot sanitizer = sanitized;

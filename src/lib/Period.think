@@ -1,14 +1,15 @@
 ###
-# Periods
+# Period
+# Detects time period transitions.
 #   - period
-#   - since
-#   - candles
+#   - since   = for "SinceDate"
+#   - candles = for "CandlesAgo"
 ###
 
 #include_once "./Date.think"
 #include_once "./Chart.think"
 
-script Periods {
+script Period {
     input period  = "Chart";
     input since   = 20250407;
     input candles = 100;

@@ -1,0 +1,53 @@
+###
+ # Efficiency Ratio
+ # Trend vs. noise/range
+ #
+ # Inputs:
+ #   - data   = raw price or Log(price)
+ #   - window = rolling window
+ #      - 10-20  for local behavior
+ #      - 50-100 for structural regime
+ #      - common pattern = require agreememnt or use one as a gate
+ #
+ # Interpretation:
+ #   - conceptually:
+ #     - > 0                = efficiency up
+ #     - < 0                = efficiency down
+ #     - low slope, high ER = slow grind
+ #     - high slope, low ER = violent zig-zag
+ #   - signal hysteresis:
+ #     - range/noise      = ER(Log(price)) < 0.20–0.24
+ #     - neutral/mixed    = ER(Log(price)) 0.24–0.38
+ #     - trend/tradable   = ER(Log(price)) > 0.38–0.45
+ #     - clean trend      = ER(Log(price)) > 0.55–0.65
+ #     - exceptional/late = ER(Log(price)) > 0.75
+ #     - default range    = 0.22/0.27
+ #     - default trend    = 0.40/0.32
+ #     - debounce         = 2
+ #   - p(er)
+ #     - > 0.70 = trend
+ #     - < 0.30 = range
+ #   - z(er)
+ #     - > 0.75 =  trend
+ #     - < -0.75 = range
+###
+
+###
+ # TODOs:
+ # protect NaNs / div by zero
+ # smoothing / stability
+ # winsor/clamp
+###
+
+script Efficiency {
+    input data   = 0;
+    input window = 20;
+
+    def start = GetValue(data, window);
+    def sign  = Sign(data - start);
+
+    def net  = AbsValue(data - start);
+    def path = Sum(AbsValue(data - GetValue(data, 1)), window);
+
+    plot ratio = net / path;
+}

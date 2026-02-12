@@ -1,0 +1,61 @@
+###
+ # Vol-of-Vol
+ # How unstable realized volatility is.
+ #
+ # Inputs:
+ #   - data = use log returns
+ #   - window    = for stdev
+ #   - annualize = for vol calculation
+ #     - Daily bars  = 252
+ #     - Weekly bars = 52
+ #     - Intraday    = barsPerDay * 252
+ #
+ # Interpretation:
+ #   - low vol, low vov             = stable risk, grindy, trend filters behave more predictably
+ #   - high vol + low/moderate vov  = risky but coherent (e.g. sustained selloff), directional systems can still work
+ #   - High vov (especially rising) = transition / instability, shocks, whipsaws, vol clustering changing fast, many good signals degrade
+ #   - nvov:
+ #     - < 0.25    = stable
+ #     - 0.25–0.50 = normal/moderate instability
+ #     - > 0.50    = unstable / transition risk
+ #     - > 0.80    = very unstable (often event-driven)
+ #   - zvov:
+ #     - < -0.5       = Low/stable
+ #     - -0.5 to +1.0 = Neutral
+ #     - > +1.0       = High/unstable
+ #     - > +1.5       = Unstable
+ #   - pvov:
+ #     - stable   = < 0.3
+ #     - neutral  = 0.3-0.8
+ #     - high     = > 0.8
+ #     - unstable = > 0.9
+###
+
+#include_once "../lib/Volatility.think"
+#include_once "../lib/Percentile.think"
+#include_once "../lib/ZScore.think"
+
+script VolatilityOfVolatilityFilter {
+    input data      = 0;
+    input window    = 20;
+    input annualize = 252;
+
+    def rv   = Volatility(data, window, annualize);
+    def vov  = Volatility(rv, window, annualize);
+    def pvov = Percentile(vov);
+    def zvov = ZScore(vov);
+
+    def zRegimeType =
+        if      zvov > 1.5  then  2
+        else if zvov > 1.0  then  1
+        else if zvov < -0.5 then -1
+        else 0;
+
+    def pRegimeType =
+        if      pvov > 0.9 then  2
+        else if pvov > 0.8 then  1
+        else if pvov < 0.3 then -1
+        else 0;
+
+    plot P = Double.NaN;
+}

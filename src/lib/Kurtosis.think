@@ -1,9 +1,45 @@
 ###
-# Kurtosis
-#   - data
-#   - debias
-#   - window
-#   - excess
+ # Kurtosis
+ # Measures fatness of distribution tails
+ # How abnormal is the market right now?
+ #   - talk-risk indicator
+ #   - non-directional
+ #   - kurtosis often rises before realized volatility
+ #   - Use z-scores of excess kurtosis
+ #     - drifts slowly making it hard to detect transitions
+ #     - measures tail risk vs recent conditions
+ #     - normalizes timeframes and asset types
+ #   - robust systems can use both
+ #     - raw      = structural risk, long regimes, strategy filter
+ #     - z-scored = regime shifts, early warnings, cross-market consistency, entry gating
+ #
+ # Inputs:
+ #   - data   = use log returns
+ #   - debias
+ #   - window = rolling window (30-120)
+ #   - excess = threshold considered "excess"
+ #
+ # Interpretation:
+ #   - conceptually:
+ #     - high           = more extreme returns (enable trend/breakout strategies)
+ #     - low & stable   = mean-reverting, orderly
+ #     - low            = more concentrated around the mean (enable mean reversion strategies)
+ #     - rising         = transition from "grind" to "shock prone" (increasing jump risk and instability)
+ #     - high & rising  = fragile / crash-prone
+ #     - high & falling = post-shock normalization
+ #     - rising on high tfs and flat on lower TFs can preceede breakouts
+ #   - z(excess k):
+ #     - < −1 = Unusually calm / compressed
+ #     - > +1 = Elevated tail risk
+ #     - > +2 = Severe instability
+ #   - p(excess k):
+ #     - < 0.2 = Very calm
+ #     - > 0.8 = Elevated tail risk
+ #     - > 0.9 = Extreme regime
+ #   - combined with skew:
+ #     - high kurtosis, high skew = crash-risk or melt-up risk
+ #     - high kurtosis, low skew  = two-sided instability
+ #     - low kurtosis,  low skew  = stable, mean-reverting
 ###
 
 script Kurtosis {

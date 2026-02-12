@@ -4,7 +4,7 @@
   "extensions"    : [".think"],
   "includeRegex"  : "(?:^|\\s)(#include_once|#include)\\s+\"?([^\";\\r\\n]+)\"?;?",
   "banner"        : "###\n# {{SOURCE}} @ {{TIMESTAMP}}\n###\n",
-  "minify"        : false,
+  "minify"        : true,
 
   "tokens": {
     "LIGHT.GRAY"   : "CreateColor(107, 107, 107)",

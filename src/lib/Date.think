@@ -1,3 +1,7 @@
+###
+ # Date utility script
+###
+
 script Date {
     def yyyymmdd = GetYYYYMMDD();
     def yyyy     = GetYear();
